@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate protobuf types
+        run: pnpm run proto:generate
+
+      - name: Typecheck affected packages
+        run: pnpm exec turbo run typecheck --affected --continue=never
+
+      - name: Lint changed files
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+          pnpm exec biome check --changed --since="$BASE_SHA" --no-errors-on-unmatched
+
+      - name: Unit test affected packages
+        run: pnpm exec turbo run test:unit --affected --continue=never
+
+      - name: Build affected packages
+        run: pnpm exec turbo run build --affected --continue=never

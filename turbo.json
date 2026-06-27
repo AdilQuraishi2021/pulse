@@ -10,10 +10,11 @@
 			"persistent": true
 		},
 		"lint": {
-			"dependsOn": ["^build"]
+			"outputs": []
 		},
 		"typecheck": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build"],
+			"outputs": []
 		},
 		"test": {
 			"dependsOn": ["^build"],
@@ -24,16 +25,24 @@
 			"outputs": ["coverage/**"]
 		},
 		"test:integration": {
+			"cache": false,
 			"dependsOn": ["^build"]
 		},
 		"test:e2e": {
+			"cache": false,
 			"dependsOn": ["build"]
 		},
 		"proto:generate": {
 			"outputs": ["generated/**"]
 		},
-		"db:generate": {},
-		"db:migrate": {},
-		"db:seed": {}
+		"db:generate": {
+			"outputs": ["../../db/migrations/**"]
+		},
+		"db:migrate": {
+			"cache": false
+		},
+		"db:seed": {
+			"cache": false
+		}
 	}
 }

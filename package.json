@@ -13,6 +13,8 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"typecheck": "turbo run typecheck",
+		"precommit": "biome check --staged --no-errors-on-unmatched && turbo run typecheck --affected --continue=never",
+		"prepare": "git config core.hooksPath .githooks || true",
 		"test": "turbo run test",
 		"test:unit": "turbo run test:unit",
 		"test:integration": "turbo run test:integration",
