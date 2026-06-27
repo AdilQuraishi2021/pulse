@@ -2,7 +2,7 @@ import * as schema from "@chirp/db-schema";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 
-const client = createClient({
+export const client = createClient({
 	url: process.env.DATABASE_URL || "file:./chirp.db",
 });
 

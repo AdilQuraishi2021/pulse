@@ -1,9 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { processMentions } from "./mentions.service";
+import { getPostMetrics, metricsForPost } from "./post-metrics";
 import { generateId } from "./utils";
 
-const { posts, users, likes, comments } = schema;
+const { posts, users } = schema;
 
 export interface CreatePostInput {
 	content: string;
@@ -20,36 +21,6 @@ export interface GetPostsOptions {
 	limit?: number;
 	offset?: number;
 	userId?: string; // For checking if liked
-}
-
-async function getPostCounts(postId: string, userId?: string) {
-	const likesResult = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(likes)
-		.where(eq(likes.postId, postId))
-		.get();
-
-	const commentsResult = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(comments)
-		.where(eq(comments.postId, postId))
-		.get();
-
-	let isLiked = false;
-	if (userId) {
-		const likeStatus = await db
-			.select()
-			.from(likes)
-			.where(and(eq(likes.postId, postId), eq(likes.userId, userId)))
-			.get();
-		isLiked = !!likeStatus;
-	}
-
-	return {
-		likeCount: likesResult?.count || 0,
-		commentCount: commentsResult?.count || 0,
-		isLiked,
-	};
 }
 
 export async function createPost(input: CreatePostInput) {
@@ -97,7 +68,8 @@ export async function getPost(postId: string, userId?: string) {
 		throw new Error("Post not found");
 	}
 
-	const counts = await getPostCounts(postId, userId);
+	const metricsByPostId = await getPostMetrics([postId], userId);
+	const counts = metricsForPost(metricsByPostId, postId);
 
 	return {
 		...post,
@@ -181,12 +153,14 @@ export async function getPosts(options: GetPostsOptions = {}) {
 		.limit(limit)
 		.offset(offset);
 
-	const postsWithCounts = await Promise.all(
-		result.map(async (post) => {
-			const counts = await getPostCounts(post.id, options.userId);
-			return { ...post, ...counts };
-		}),
+	const metricsByPostId = await getPostMetrics(
+		result.map((post) => post.id),
+		options.userId,
 	);
+	const postsWithCounts = result.map((post) => ({
+		...post,
+		...metricsForPost(metricsByPostId, post.id),
+	}));
 
 	return postsWithCounts;
 }
@@ -216,12 +190,14 @@ export async function getUserPosts(username: string, userId?: string) {
 		.where(eq(posts.authorId, user.id))
 		.orderBy(desc(posts.createdAt));
 
-	const postsWithCounts = await Promise.all(
-		result.map(async (post) => {
-			const counts = await getPostCounts(post.id, userId);
-			return { ...post, ...counts };
-		}),
+	const metricsByPostId = await getPostMetrics(
+		result.map((post) => post.id),
+		userId,
 	);
+	const postsWithCounts = result.map((post) => ({
+		...post,
+		...metricsForPost(metricsByPostId, post.id),
+	}));
 
 	return postsWithCounts;
 }

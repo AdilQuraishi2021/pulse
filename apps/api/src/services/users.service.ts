@@ -1,7 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 
-const { users, follows, posts } = schema;
+const { users } = schema;
 
 export interface UpdateProfileInput {
 	userId: string;
@@ -21,6 +21,27 @@ export async function getUser(username: string, requesterId?: string) {
 			bio: users.bio,
 			role: users.role,
 			createdAt: users.createdAt,
+			followerCount: sql<number>`(
+				select count(*) from follows
+				where follows.following_id = users.id
+			)`,
+			followingCount: sql<number>`(
+				select count(*) from follows
+				where follows.follower_id = users.id
+			)`,
+			postCount: sql<number>`(
+				select count(*) from posts
+				where posts.author_id = users.id
+			)`,
+			isFollowing: requesterId
+				? sql<number>`(
+						select exists(
+							select 1 from follows
+							where follows.follower_id = ${requesterId}
+								and follows.following_id = users.id
+						)
+					)`
+				: sql<number>`0`,
 		})
 		.from(users)
 		.where(eq(users.username, username))
@@ -30,44 +51,9 @@ export async function getUser(username: string, requesterId?: string) {
 		throw new Error("User not found");
 	}
 
-	// Get follower count
-	const followerResult = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(follows)
-		.where(eq(follows.followingId, user.id))
-		.get();
-
-	// Get following count
-	const followingResult = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(follows)
-		.where(eq(follows.followerId, user.id))
-		.get();
-
-	// Get post count
-	const postResult = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(posts)
-		.where(eq(posts.authorId, user.id))
-		.get();
-
-	// Check if requester is following this user
-	let isFollowing = false;
-	if (requesterId && requesterId !== user.id) {
-		const follow = await db
-			.select()
-			.from(follows)
-			.where(and(eq(follows.followerId, requesterId), eq(follows.followingId, user.id)))
-			.get();
-		isFollowing = !!follow;
-	}
-
 	return {
 		...user,
-		followerCount: followerResult?.count || 0,
-		followingCount: followingResult?.count || 0,
-		postCount: postResult?.count || 0,
-		isFollowing,
+		isFollowing: requesterId !== user.id && Boolean(user.isFollowing),
 	};
 }
 
