@@ -7,11 +7,21 @@ export interface SessionData {
 }
 
 // Session secret - in production, use environment variable
-const SESSION_SECRET = process.env.SESSION_SECRET || "chirp-session-secret-key-at-least-32-chars";
+function getSessionSecret() {
+	if (process.env.SESSION_SECRET) {
+		return process.env.SESSION_SECRET;
+	}
+
+	if (process.env.NODE_ENV === "production") {
+		throw new Error("SESSION_SECRET is required in production");
+	}
+
+	return "chirp-session-secret-key-at-least-32-chars";
+}
 
 export function useAppSession() {
 	return useSession<SessionData>({
-		password: SESSION_SECRET,
+		password: getSessionSecret(),
 		name: "chirp-session",
 		cookie: {
 			httpOnly: true,
