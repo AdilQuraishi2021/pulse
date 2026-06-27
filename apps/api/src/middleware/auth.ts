@@ -1,7 +1,8 @@
 import type { GrpcSessionPayload } from "@chirp/shared-types";
+import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.GRPC_JWT_SECRET || "chirp-grpc-jwt-secret-key-at-least-32-chars";
+const JWT_SECRET = process.env.GRPC_JWT_SECRET || randomBytes(32).toString("hex");
 
 export interface AuthContext {
 	userId: string;

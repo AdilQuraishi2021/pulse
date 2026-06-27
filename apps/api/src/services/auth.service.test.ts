@@ -1,10 +1,17 @@
 import { eq } from "drizzle-orm";
+import { createHash } from "crypto";
 import { describe, expect, it } from "vitest";
 import { createTestUser } from "../../tests/helpers";
 import { db, schema } from "../db";
 import { getCurrentUser, loginUser, registerUser } from "./auth.service";
 
 const { users } = schema;
+
+function legacyPasswordHash(password: string): string {
+	const hash = createHash("sha256");
+	hash.update(password + "salt");
+	return hash.digest("hex");
+}
 
 describe("AuthService", () => {
 	describe("registerUser", () => {
@@ -26,6 +33,8 @@ describe("AuthService", () => {
 			expect(user?.email).toBe("new@example.com");
 			expect(user?.username).toBe("newuser");
 			expect(user?.role).toBe("user");
+			expect(user?.passwordHash).toMatch(/^scrypt\$/);
+			expect(user?.passwordHash).not.toContain("password123");
 		});
 
 		it("rejects duplicate email", async () => {
@@ -69,6 +78,34 @@ describe("AuthService", () => {
 
 			expect(result.userId).toBeDefined();
 			expect(result.sessionToken).toBeDefined();
+		});
+
+		it("logs in legacy SHA-256 users and upgrades the stored hash", async () => {
+			const legacyHash = legacyPasswordHash("correctpassword");
+
+			await db.insert(users).values({
+				id: "legacy-user",
+				email: "legacy@example.com",
+				username: "legacy",
+				displayName: "Legacy User",
+				passwordHash: legacyHash,
+				role: "user",
+			});
+
+			const result = await loginUser({
+				email: "legacy@example.com",
+				password: "correctpassword",
+			});
+
+			expect(result.userId).toBe("legacy-user");
+
+			const upgradedUser = await db
+				.select()
+				.from(users)
+				.where(eq(users.id, "legacy-user"))
+				.get();
+			expect(upgradedUser?.passwordHash).toMatch(/^scrypt\$/);
+			expect(upgradedUser?.passwordHash).not.toBe(legacyHash);
 		});
 
 		it("rejects invalid email", async () => {

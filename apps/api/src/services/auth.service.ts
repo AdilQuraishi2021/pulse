@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { type AuthContext, createSessionToken } from "../middleware/auth";
-import { generateId, hashPassword, verifyPassword } from "./utils";
+import { generateId, hashPassword, passwordNeedsRehash, verifyPassword } from "./utils";
 
 const { users } = schema;
 
@@ -77,6 +77,13 @@ export async function loginUser(input: LoginInput) {
 	const valid = await verifyPassword(input.password, user.passwordHash);
 	if (!valid) {
 		throw new Error("Invalid email or password");
+	}
+
+	if (passwordNeedsRehash(user.passwordHash)) {
+		await db
+			.update(users)
+			.set({ passwordHash: await hashPassword(input.password) })
+			.where(eq(users.id, user.id));
 	}
 
 	// Create session token
