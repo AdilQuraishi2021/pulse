@@ -24,22 +24,36 @@ import { notificationsHandler } from "./handlers/notifications.handler";
 import { postsHandler } from "./handlers/posts.handler";
 import { searchHandler } from "./handlers/search.handler";
 import { usersHandler } from "./handlers/users.handler";
+import { withObservability } from "../observability";
 
 export function startGrpcServer(port: number): Promise<Server> {
 	const server = new Server();
 
 	// Register all service handlers
-	server.addService(...adaptService(AuthService, authHandler));
-	server.addService(...adaptService(PostsService, postsHandler));
-	server.addService(...adaptService(CommentsService, commentsHandler));
-	server.addService(...adaptService(LikesService, likesHandler));
-	server.addService(...adaptService(FollowsService, followsHandler));
-	server.addService(...adaptService(FeedService, feedHandler));
-	server.addService(...adaptService(SearchService, searchHandler));
-	server.addService(...adaptService(UsersService, usersHandler));
-	server.addService(...adaptService(AdminService, adminHandler));
-	server.addService(...adaptService(NotificationsService, notificationsHandler));
-	server.addService(...adaptService(BookmarksService, bookmarksHandler));
+	server.addService(...adaptService(AuthService, withObservability(AuthService.typeName, authHandler)));
+	server.addService(...adaptService(PostsService, withObservability(PostsService.typeName, postsHandler)));
+	server.addService(
+		...adaptService(CommentsService, withObservability(CommentsService.typeName, commentsHandler)),
+	);
+	server.addService(...adaptService(LikesService, withObservability(LikesService.typeName, likesHandler)));
+	server.addService(
+		...adaptService(FollowsService, withObservability(FollowsService.typeName, followsHandler)),
+	);
+	server.addService(...adaptService(FeedService, withObservability(FeedService.typeName, feedHandler)));
+	server.addService(
+		...adaptService(SearchService, withObservability(SearchService.typeName, searchHandler)),
+	);
+	server.addService(...adaptService(UsersService, withObservability(UsersService.typeName, usersHandler)));
+	server.addService(...adaptService(AdminService, withObservability(AdminService.typeName, adminHandler)));
+	server.addService(
+		...adaptService(
+			NotificationsService,
+			withObservability(NotificationsService.typeName, notificationsHandler),
+		),
+	);
+	server.addService(
+		...adaptService(BookmarksService, withObservability(BookmarksService.typeName, bookmarksHandler)),
+	);
 
 	return new Promise((resolve, reject) => {
 		server.bindAsync(`0.0.0.0:${port}`, ServerCredentials.createInsecure(), (error, boundPort) => {
