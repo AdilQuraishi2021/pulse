@@ -56,6 +56,8 @@ import type {
 	GetUserPostsRequest,
 	// Users
 	GetUserRequest,
+	ImprovePostRequest,
+	ImprovePostResponse,
 	LikeResponse,
 	LikeStatusResponse,
 	ListReportsRequest,
@@ -101,6 +103,11 @@ import type {
 	ValidateSessionRequest,
 	ValidateSessionResponse,
 } from "./index";
+
+// AI Service Handler
+export interface IAiService {
+	improvePost(request: ImprovePostRequest): Promise<ImprovePostResponse>;
+}
 
 // Auth Service Handler
 export interface IAuthService {

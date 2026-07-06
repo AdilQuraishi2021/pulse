@@ -59,6 +59,7 @@ After running the seed script:
 #### Core Features
 - **Authentication** - Email/password registration, login, session management
 - **Posts** - Create, edit (within 5 min), delete text posts (max 280 chars)
+- **AI Writing Tools** - Rewrite, grammar correction, summarization, tone changes, expansion, shortening, hashtags, captions, and engagement improvements from the post composer
 - **Comments** - Add/delete comments, nested threads (1 level deep)
 - **Likes** - Like/unlike posts and comments
 - **User Profiles** - View profiles, edit own profile (name, bio, avatar)
@@ -202,6 +203,20 @@ pnpm run test:e2e         # Run E2E tests only (client apps)
 - `audit_logs` - Admin action logs
 
 ## Development
+
+### Environment Variables
+
+The API reads environment variables from the process environment and local `.env` files. For MySQL and AI writing tools, configure:
+
+```bash
+DATABASE_URL=mysql://user:password@localhost:3306/chirp
+GRPC_JWT_SECRET=replace-with-a-long-random-secret
+SESSION_SECRET=replace-with-a-long-random-secret
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+`OPENAI_API_KEY` is required only for AI writing tools. `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`.
 
 ### Adding a New Feature
 

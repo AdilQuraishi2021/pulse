@@ -3,6 +3,9 @@
 // Admin
 export * from "../generated/admin";
 export * from "../generated/admin.client";
+// AI
+export * from "../generated/ai";
+export * from "../generated/ai.client";
 // Auth
 export * from "../generated/auth";
 export * from "../generated/auth.client";

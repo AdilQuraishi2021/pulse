@@ -1,5 +1,6 @@
 import {
 	AdminService,
+	AiService,
 	AuthService,
 	BookmarksService,
 	CommentsService,
@@ -13,7 +14,9 @@ import {
 } from "@chirp/proto";
 import { Server, ServerCredentials } from "@grpc/grpc-js";
 import { adaptService } from "@protobuf-ts/grpc-backend";
+import { withObservability } from "../observability";
 import { adminHandler } from "./handlers/admin.handler";
+import { aiHandler } from "./handlers/ai.handler";
 import { authHandler } from "./handlers/auth.handler";
 import { bookmarksHandler } from "./handlers/bookmarks.handler";
 import { commentsHandler } from "./handlers/comments.handler";
@@ -24,27 +27,39 @@ import { notificationsHandler } from "./handlers/notifications.handler";
 import { postsHandler } from "./handlers/posts.handler";
 import { searchHandler } from "./handlers/search.handler";
 import { usersHandler } from "./handlers/users.handler";
-import { withObservability } from "../observability";
 
 export function startGrpcServer(port: number): Promise<Server> {
 	const server = new Server();
 
 	// Register all service handlers
-	server.addService(...adaptService(AuthService, withObservability(AuthService.typeName, authHandler)));
-	server.addService(...adaptService(PostsService, withObservability(PostsService.typeName, postsHandler)));
+	server.addService(...adaptService(AiService, withObservability(AiService.typeName, aiHandler)));
+	server.addService(
+		...adaptService(AuthService, withObservability(AuthService.typeName, authHandler)),
+	);
+	server.addService(
+		...adaptService(PostsService, withObservability(PostsService.typeName, postsHandler)),
+	);
 	server.addService(
 		...adaptService(CommentsService, withObservability(CommentsService.typeName, commentsHandler)),
 	);
-	server.addService(...adaptService(LikesService, withObservability(LikesService.typeName, likesHandler)));
+	server.addService(
+		...adaptService(LikesService, withObservability(LikesService.typeName, likesHandler)),
+	);
 	server.addService(
 		...adaptService(FollowsService, withObservability(FollowsService.typeName, followsHandler)),
 	);
-	server.addService(...adaptService(FeedService, withObservability(FeedService.typeName, feedHandler)));
+	server.addService(
+		...adaptService(FeedService, withObservability(FeedService.typeName, feedHandler)),
+	);
 	server.addService(
 		...adaptService(SearchService, withObservability(SearchService.typeName, searchHandler)),
 	);
-	server.addService(...adaptService(UsersService, withObservability(UsersService.typeName, usersHandler)));
-	server.addService(...adaptService(AdminService, withObservability(AdminService.typeName, adminHandler)));
+	server.addService(
+		...adaptService(UsersService, withObservability(UsersService.typeName, usersHandler)),
+	);
+	server.addService(
+		...adaptService(AdminService, withObservability(AdminService.typeName, adminHandler)),
+	);
 	server.addService(
 		...adaptService(
 			NotificationsService,
@@ -52,7 +67,10 @@ export function startGrpcServer(port: number): Promise<Server> {
 		),
 	);
 	server.addService(
-		...adaptService(BookmarksService, withObservability(BookmarksService.typeName, bookmarksHandler)),
+		...adaptService(
+			BookmarksService,
+			withObservability(BookmarksService.typeName, bookmarksHandler),
+		),
 	);
 
 	return new Promise((resolve, reject) => {

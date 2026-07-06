@@ -130,7 +130,11 @@ vi.mock("../src/db", async () => {
 });
 
 // Clean up database before each test
-beforeEach(async () => {
+beforeEach(async (context) => {
+	if (context.task.file.name.endsWith("ai.service.test.ts")) {
+		return;
+	}
+
 	const { client } = await import("../src/db");
 	// Clear all tables in reverse order of dependencies
 	await (client as any).execute("DELETE FROM audit_logs");

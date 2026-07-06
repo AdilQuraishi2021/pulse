@@ -1,5 +1,6 @@
 import {
 	AdminServiceClient,
+	AiServiceClient,
 	AuthServiceClient,
 	BookmarksServiceClient,
 	CommentsServiceClient,
@@ -20,6 +21,7 @@ export interface ChirpClientConfig {
 }
 
 export interface ChirpClient {
+	ai: AiServiceClient;
 	auth: AuthServiceClient;
 	posts: PostsServiceClient;
 	comments: CommentsServiceClient;
@@ -50,6 +52,7 @@ export function createChirpClient(config: ChirpClientConfig): ChirpClient {
 	});
 
 	return {
+		ai: new AiServiceClient(transport),
 		auth: new AuthServiceClient(transport),
 		posts: new PostsServiceClient(transport),
 		comments: new CommentsServiceClient(transport),

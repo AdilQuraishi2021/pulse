@@ -1,0 +1,18 @@
+syntax = "proto3";
+package chirp.ai;
+
+service AiService {
+  rpc ImprovePost(ImprovePostRequest) returns (ImprovePostResponse);
+}
+
+message ImprovePostRequest {
+  string session_token = 1;
+  string text = 2;
+  string type = 3;
+}
+
+message ImprovePostResponse {
+  bool success = 1;
+  string text = 2;
+  optional string error = 3;
+}

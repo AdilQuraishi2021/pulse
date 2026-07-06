@@ -1,8 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { AlertCircle, Send } from "lucide-react";
+import { AlertCircle, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { type AiPostType, improvePostWithAi } from "../../server/functions/ai";
 import { createPost } from "../../server/functions/posts";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
+import { AIOptions } from "../ai/AIOptions";
+import { AIResultPopup } from "../ai/AIResultPopup";
 import { CharacterCount } from "../shared/CharacterCount";
 
 const spin = stylex.keyframes({
@@ -60,6 +63,58 @@ const styles = stylex.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 		marginTop: spacing.md,
+		gap: spacing.md,
+		flexWrap: "wrap",
+	},
+	footerActions: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		flexWrap: "wrap",
+	},
+	aiButton: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.xs,
+		paddingLeft: spacing.md,
+		paddingRight: spacing.md,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		backgroundColor: semanticColors.surfaceCard,
+		color: colors.indigo500,
+		borderRadius: radii.lg,
+		fontWeight: 700,
+		fontSize: "0.875rem",
+		border: `1px solid ${semanticColors.borderDefault}`,
+		cursor: "pointer",
+		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+		":hover": {
+			backgroundColor: semanticColors.primaryLight,
+			borderColor: colors.indigo500,
+		},
+		":disabled": {
+			opacity: 0.5,
+			cursor: "not-allowed",
+		},
+	},
+	undoButton: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.xs,
+		paddingLeft: spacing.md,
+		paddingRight: spacing.md,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		backgroundColor: "transparent",
+		color: semanticColors.textSecondary,
+		borderRadius: radii.lg,
+		fontWeight: 600,
+		fontSize: "0.875rem",
+		border: `1px solid ${semanticColors.borderDefault}`,
+		cursor: "pointer",
+		":hover": {
+			backgroundColor: semanticColors.bgHover,
+		},
 	},
 	submitButton: {
 		display: "flex",
@@ -106,7 +161,11 @@ const styles = stylex.create({
 
 export function PostForm({ onSuccess }: { onSuccess?: () => void }) {
 	const [content, setContent] = useState("");
+	const [history, setHistory] = useState<string[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [aiLoading, setAiLoading] = useState(false);
+	const [showAiOptions, setShowAiOptions] = useState(false);
+	const [aiResult, setAiResult] = useState("");
 	const [error, setError] = useState("");
 	const [isFocused, setIsFocused] = useState(false);
 
@@ -120,11 +179,57 @@ export function PostForm({ onSuccess }: { onSuccess?: () => void }) {
 		try {
 			await createPost({ data: { content } });
 			setContent("");
+			setHistory([]);
+			setShowAiOptions(false);
 			onSuccess?.();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create post");
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleAiSelect = async (type: AiPostType) => {
+		const text = content.trim();
+		if (!text) {
+			setError("Write something first, then choose an AI tool.");
+			return;
+		}
+
+		setAiLoading(true);
+		setError("");
+
+		try {
+			const result = await improvePostWithAi({ data: { text, type } });
+			setAiResult(result.text);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "AI request failed");
+		} finally {
+			setAiLoading(false);
+		}
+	};
+
+	const handleReplaceWithAiResult = () => {
+		setHistory((items) => [...items.slice(-4), content]);
+		setContent(aiResult.slice(0, 280));
+		setAiResult("");
+		setShowAiOptions(false);
+	};
+
+	const handleUndo = () => {
+		const previous = history.at(-1);
+		if (previous === undefined) {
+			return;
+		}
+		setContent(previous);
+		setHistory((items) => items.slice(0, -1));
+	};
+
+	const handleCopyAiResult = async () => {
+		try {
+			await navigator.clipboard.writeText(aiResult);
+		} catch {
+			setError("Could not copy AI result.");
 		}
 	};
 
@@ -152,24 +257,61 @@ export function PostForm({ onSuccess }: { onSuccess?: () => void }) {
 
 			<div {...stylex.props(styles.footer)}>
 				<CharacterCount count={content.length} max={280} />
-				<button
-					type="submit"
-					disabled={loading || content.trim().length === 0 || content.length > 280}
-					{...stylex.props(styles.submitButton)}
-				>
-					{loading ? (
-						<>
-							<div {...stylex.props(styles.spinner)} />
-							Posting...
-						</>
-					) : (
-						<>
-							<Send size={20} />
-							Post
-						</>
+				<div {...stylex.props(styles.footerActions)}>
+					{history.length > 0 && (
+						<button type="button" onClick={handleUndo} {...stylex.props(styles.undoButton)}>
+							<RotateCcw size={16} />
+							Undo
+						</button>
 					)}
-				</button>
+					<button
+						type="button"
+						disabled={aiLoading || content.trim().length === 0}
+						onClick={() => setShowAiOptions((value) => !value)}
+						{...stylex.props(styles.aiButton)}
+					>
+						{aiLoading ? (
+							<>
+								<div {...stylex.props(styles.spinner)} />
+								AI...
+							</>
+						) : (
+							<>
+								<Sparkles size={16} />
+								AI
+							</>
+						)}
+					</button>
+					<button
+						type="submit"
+						disabled={loading || content.trim().length === 0 || content.length > 280}
+						{...stylex.props(styles.submitButton)}
+					>
+						{loading ? (
+							<>
+								<div {...stylex.props(styles.spinner)} />
+								Posting...
+							</>
+						) : (
+							<>
+								<Send size={20} />
+								Post
+							</>
+						)}
+					</button>
+				</div>
 			</div>
+
+			{showAiOptions && <AIOptions disabled={aiLoading} onSelect={handleAiSelect} />}
+			{aiResult && (
+				<AIResultPopup
+					value={aiResult}
+					onChange={setAiResult}
+					onClose={() => setAiResult("")}
+					onCopy={handleCopyAiResult}
+					onReplace={handleReplaceWithAiResult}
+				/>
+			)}
 		</form>
 	);
 }
