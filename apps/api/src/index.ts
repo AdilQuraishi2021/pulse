@@ -1,4 +1,5 @@
 import "./env";
+import { createServer } from "node:http";
 import { node } from "@elysiajs/node";
 import { Elysia } from "elysia";
 import { startGrpcServer } from "./grpc/server";
@@ -6,6 +7,7 @@ import { initializeSocketServer } from "./realtime/socket";
 
 const GRPC_PORT = Number(process.env.GRPC_PORT) || 50051;
 const HTTP_PORT = Number(process.env.HTTP_PORT) || 3001;
+const SOCKET_PORT = Number(process.env.SOCKET_PORT) || 3003;
 
 // Start gRPC server first — health check must not report ok until gRPC is ready
 const grpcServer = await startGrpcServer(GRPC_PORT);
@@ -21,26 +23,28 @@ const app = new Elysia({ adapter: node() })
 	}))
 	.listen(HTTP_PORT);
 
-if (app.server) {
-	initializeSocketServer(app.server);
-}
+const socketHttpServer = createServer();
+initializeSocketServer(socketHttpServer);
+socketHttpServer.listen(SOCKET_PORT);
 
 console.log(`🚀 Pulse API started`);
 console.log(`   HTTP server: http://localhost:${HTTP_PORT}`);
 console.log(`   gRPC server: localhost:${GRPC_PORT}`);
-console.log(`   Socket.IO server: ws://localhost:${HTTP_PORT}`);
+console.log(`   Socket.IO server: ws://localhost:${SOCKET_PORT}`);
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
 	console.log("Shutting down...");
+	socketHttpServer.close();
 	grpcServer.forceShutdown();
 	process.exit(0);
 });
 
 process.on("SIGINT", () => {
 	console.log("Shutting down...");
+	socketHttpServer.close();
 	grpcServer.forceShutdown();
 	process.exit(0);
 });
 
-export { app, grpcServer };
+export { app, grpcServer, socketHttpServer };

@@ -37,6 +37,7 @@ pnpm run dev
 | User App | http://localhost:3000 | Main social media interface |
 | Admin App | http://localhost:3002 | Admin dashboard |
 | API Server | http://localhost:3001 | gRPC API (health check at /health) |
+| Realtime Server | http://localhost:3003 | Socket.IO live updates |
 
 ## Test Accounts
 
@@ -214,6 +215,8 @@ GRPC_JWT_SECRET=replace-with-a-long-random-secret
 SESSION_SECRET=replace-with-a-long-random-secret
 GEMINI_API_KEY=your-google-ai-studio-key
 GEMINI_MODEL=gemini-3.5-flash
+SOCKET_PORT=3003
+VITE_SOCKET_URL=http://localhost:3003
 ```
 
 `GEMINI_API_KEY` is required only for AI writing tools. You can create a free development key in Google AI Studio. `GEMINI_MODEL` is optional and defaults to `gemini-3.5-flash`.

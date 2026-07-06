@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 let socketUserId: string | null = null;
 
 function socketUrl() {
-	return import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
+	return import.meta.env.VITE_SOCKET_URL || "http://localhost:3003";
 }
 
 export function getSocket(userId?: string | null) {
