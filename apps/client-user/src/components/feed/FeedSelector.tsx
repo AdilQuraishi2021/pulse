@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Brain, Clock3, Flame, MapPin, Search, UsersRound } from "lucide-react";
+import { Brain, Clock3, Flame, MapPin, Search, SlidersHorizontal, UsersRound } from "lucide-react";
 import type { FeedMode } from "../../server/functions/feed";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
 
@@ -44,6 +44,27 @@ const styles = stylex.create({
 		flexDirection: "column",
 		gap: spacing.md,
 		marginBottom: spacing["2xl"],
+		padding: spacing.md,
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.surfaceCard,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+	},
+	header: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: spacing.md,
+	},
+	title: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		color: semanticColors.textPrimary,
+		fontSize: fontSize.sm,
+		fontWeight: fontWeight.bold,
+	},
+	titleIcon: {
+		color: semanticColors.primary,
 	},
 	options: {
 		display: "flex",
@@ -64,7 +85,7 @@ const styles = stylex.create({
 		borderStyle: "solid",
 		borderColor: semanticColors.borderDefault,
 		borderRadius: radii.lg,
-		backgroundColor: semanticColors.bgPrimary,
+		backgroundColor: semanticColors.bgTertiary,
 		color: semanticColors.textSecondary,
 		fontSize: fontSize.xs,
 		fontWeight: fontWeight.semibold,
@@ -80,6 +101,7 @@ const styles = stylex.create({
 		backgroundColor: semanticColors.primaryLight,
 		borderColor: semanticColors.borderFocus,
 		color: semanticColors.primary,
+		boxShadow: "inset 0 0 0 1px rgba(99, 102, 241, 0.08)",
 	},
 	inputRow: {
 		display: "flex",
@@ -121,6 +143,13 @@ export function FeedSelector({
 
 	return (
 		<div {...stylex.props(styles.wrapper)}>
+			<div {...stylex.props(styles.header)}>
+				<div {...stylex.props(styles.title)}>
+					<SlidersHorizontal size={16} {...stylex.props(styles.titleIcon)} />
+					Feed
+				</div>
+			</div>
+
 			<div {...stylex.props(styles.options)}>
 				{FEED_OPTIONS.map((option) => {
 					const Icon = option.icon;

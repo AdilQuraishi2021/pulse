@@ -1,9 +1,18 @@
 import * as stylex from "@stylexjs/stylex";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Bookmark, Compass, Home, LogOut, MessageCircle, Search } from "lucide-react";
+import {
+	Bookmark,
+	Compass,
+	Home,
+	LogIn,
+	LogOut,
+	MessageCircle,
+	Search,
+	UserPlus,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser, logoutUser } from "../../server/functions/auth";
-import { colors, radii, semanticColors, spacing, zIndex } from "../../tokens.stylex";
+import { colors, radii, semanticColors, shadows, spacing, zIndex } from "../../tokens.stylex";
 import { NotificationBell } from "../notifications/NotificationBell";
 
 const styles = stylex.create({
@@ -14,14 +23,18 @@ const styles = stylex.create({
 		backgroundColor: semanticColors.surfaceOverlay,
 		backdropFilter: "blur(20px) saturate(180%)",
 		borderBottom: `1px solid ${semanticColors.borderSubtle}`,
-		boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 0 0 rgba(0, 0, 0, 0.02)",
+		boxShadow: "0 10px 30px -24px rgba(15, 23, 42, 0.45)",
 	},
 	container: {
-		maxWidth: "72rem",
+		maxWidth: "76rem",
 		marginLeft: "auto",
 		marginRight: "auto",
-		paddingLeft: spacing.lg,
-		paddingRight: spacing.lg,
+		paddingLeft: spacing.sm,
+		paddingRight: spacing.sm,
+		"@media (min-width: 640px)": {
+			paddingLeft: spacing.lg,
+			paddingRight: spacing.lg,
+		},
 	},
 	inner: {
 		display: "flex",
@@ -34,12 +47,13 @@ const styles = stylex.create({
 		alignItems: "center",
 		gap: spacing.sm,
 		textDecoration: "none",
+		flexShrink: 0,
 	},
 	logoIcon: {
 		width: "2.25rem",
 		height: "2.25rem",
-		borderRadius: radii.xl,
-		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.purple600})`,
+		borderRadius: radii.lg,
+		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.cyan500})`,
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "center",
@@ -55,11 +69,11 @@ const styles = stylex.create({
 	logoText: {
 		fontSize: "1.25rem",
 		fontWeight: 800,
-		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.purple600})`,
+		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.cyan500})`,
 		backgroundClip: "text",
 		WebkitBackgroundClip: "text",
 		color: "transparent",
-		letterSpacing: "-0.025em",
+		letterSpacing: "0",
 		display: "none",
 		"@media (min-width: 640px)": {
 			display: "block",
@@ -68,14 +82,18 @@ const styles = stylex.create({
 	nav: {
 		display: "flex",
 		alignItems: "center",
-		gap: "2px",
+		gap: spacing.xs,
+		padding: "0.25rem",
+		borderRadius: radii.xl,
+		backgroundColor: semanticColors.bgTertiary,
+		border: `1px solid ${semanticColors.borderSubtle}`,
 	},
 	navLink: {
 		display: "flex",
 		alignItems: "center",
 		gap: spacing.xs,
-		paddingLeft: spacing.md,
-		paddingRight: spacing.md,
+		paddingLeft: spacing.sm,
+		paddingRight: spacing.sm,
 		paddingTop: "0.375rem",
 		paddingBottom: "0.375rem",
 		borderRadius: radii.lg,
@@ -83,16 +101,20 @@ const styles = stylex.create({
 		textDecoration: "none",
 		color: semanticColors.textSecondary,
 		fontSize: "0.875rem",
-		fontWeight: 500,
+		fontWeight: 600,
 		":hover": {
-			backgroundColor: semanticColors.bgHover,
+			backgroundColor: semanticColors.bgPrimary,
 			color: semanticColors.textPrimary,
+		},
+		"@media (min-width: 768px)": {
+			paddingLeft: spacing.md,
+			paddingRight: spacing.md,
 		},
 	},
 	navLinkActive: {
-		backgroundColor: semanticColors.primaryLight,
-		color: colors.indigo500,
-		fontWeight: 600,
+		backgroundColor: semanticColors.bgPrimary,
+		color: semanticColors.primary,
+		boxShadow: shadows.sm,
 	},
 	navLinkText: {
 		display: "none",
@@ -104,6 +126,7 @@ const styles = stylex.create({
 		display: "flex",
 		alignItems: "center",
 		gap: spacing.sm,
+		flexShrink: 0,
 	},
 	profileLink: {
 		display: "flex",
@@ -161,6 +184,43 @@ const styles = stylex.create({
 		":hover": {
 			backgroundColor: colors.red50,
 			color: colors.red500,
+		},
+	},
+	authLink: {
+		display: "inline-flex",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: spacing.xs,
+		minHeight: "2.25rem",
+		paddingLeft: spacing.sm,
+		paddingRight: spacing.sm,
+		borderRadius: radii.lg,
+		textDecoration: "none",
+		fontSize: "0.875rem",
+		fontWeight: 700,
+		color: semanticColors.textSecondary,
+		":hover": {
+			backgroundColor: semanticColors.bgHover,
+			color: semanticColors.textPrimary,
+		},
+		"@media (min-width: 640px)": {
+			paddingLeft: spacing.md,
+			paddingRight: spacing.md,
+		},
+	},
+	authLinkPrimary: {
+		backgroundColor: semanticColors.primary,
+		color: colors.white,
+		boxShadow: shadows.indigoSm,
+		":hover": {
+			backgroundColor: semanticColors.primaryActive,
+			color: colors.white,
+		},
+	},
+	authText: {
+		display: "none",
+		"@media (min-width: 640px)": {
+			display: "inline",
 		},
 	},
 	logoutText: {
@@ -256,7 +316,7 @@ export function Header() {
 					</nav>
 
 					{/* User Actions */}
-					{user && (
+					{user ? (
 						<div {...stylex.props(styles.userActions)}>
 							<NotificationBell isActive={isActive("/notifications")} />
 
@@ -282,6 +342,17 @@ export function Header() {
 								<LogOut size={20} />
 								<span {...stylex.props(styles.logoutText)}>Logout</span>
 							</button>
+						</div>
+					) : (
+						<div {...stylex.props(styles.userActions)}>
+							<Link to="/auth/login" {...stylex.props(styles.authLink)}>
+								<LogIn size={18} />
+								<span {...stylex.props(styles.authText)}>Log in</span>
+							</Link>
+							<Link to="/auth/register" {...stylex.props(styles.authLink, styles.authLinkPrimary)}>
+								<UserPlus size={18} />
+								<span {...stylex.props(styles.authText)}>Join</span>
+							</Link>
 						</div>
 					)}
 				</div>

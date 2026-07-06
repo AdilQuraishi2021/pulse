@@ -1,6 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { FileText } from "lucide-react";
-import { colors, radii, spacing } from "../../tokens.stylex";
+import {
+	colors,
+	fontSize,
+	fontWeight,
+	radii,
+	semanticColors,
+	shadows,
+	spacing,
+} from "../../tokens.stylex";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { PostCard } from "./PostCard";
 
@@ -24,17 +32,18 @@ const styles = stylex.create({
 		paddingBottom: spacing.xl,
 	},
 	emptyState: {
-		backgroundColor: colors.white,
-		borderRadius: radii.xl,
-		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03)",
-		padding: spacing.xl,
+		backgroundColor: semanticColors.surfaceCard,
+		borderRadius: radii.lg,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.card,
+		padding: spacing["3xl"],
 		textAlign: "center",
 	},
 	emptyIcon: {
-		width: "4rem",
-		height: "4rem",
-		borderRadius: radii.xl,
-		backgroundColor: colors.gray100,
+		width: "3.5rem",
+		height: "3.5rem",
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.primaryLight,
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "center",
@@ -43,13 +52,14 @@ const styles = stylex.create({
 		marginBottom: spacing.md,
 	},
 	emptyTitle: {
-		fontSize: "1.125rem",
-		fontWeight: 600,
-		color: colors.gray900,
+		fontSize: fontSize.base,
+		fontWeight: fontWeight.bold,
+		color: semanticColors.textPrimary,
 		marginBottom: spacing.sm,
 	},
 	emptyText: {
-		color: colors.gray500,
+		color: semanticColors.textSecondary,
+		fontSize: fontSize.sm,
 	},
 	postList: {
 		display: "flex",
@@ -76,6 +86,7 @@ export interface Post {
 	};
 	likeCount: number;
 	commentCount: number;
+	isLiked?: boolean;
 }
 
 export function PostList({
@@ -101,10 +112,10 @@ export function PostList({
 		return (
 			<div {...stylex.props(styles.emptyState)}>
 				<div {...stylex.props(styles.emptyIcon)}>
-					<FileText size={32} color={colors.gray400} />
+					<FileText size={28} color={colors.indigo500} />
 				</div>
 				<h3 {...stylex.props(styles.emptyTitle)}>No posts yet</h3>
-				<p {...stylex.props(styles.emptyText)}>Be the first to share something!</p>
+				<p {...stylex.props(styles.emptyText)}>Fresh posts will appear here.</p>
 			</div>
 		);
 	}

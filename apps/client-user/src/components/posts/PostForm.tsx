@@ -3,7 +3,15 @@ import { AlertCircle, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { type AiPostType, improvePostWithAi } from "../../server/functions/ai";
 import { createPost } from "../../server/functions/posts";
-import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
+import {
+	colors,
+	fontSize,
+	fontWeight,
+	radii,
+	semanticColors,
+	shadows,
+	spacing,
+} from "../../tokens.stylex";
 import { AIOptions } from "../ai/AIOptions";
 import { AIResultPopup } from "../ai/AIResultPopup";
 import { CharacterCount } from "../shared/CharacterCount";
@@ -16,9 +24,40 @@ const spin = stylex.keyframes({
 const styles = stylex.create({
 	form: {
 		backgroundColor: semanticColors.surfaceCard,
-		borderRadius: radii.xl,
-		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03)",
+		borderRadius: radii.lg,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.card,
 		padding: spacing.lg,
+	},
+	formHeader: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: spacing.md,
+		marginBottom: spacing.md,
+	},
+	formTitle: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		color: semanticColors.textPrimary,
+		fontSize: fontSize.sm,
+		fontWeight: fontWeight.bold,
+	},
+	titleIcon: {
+		width: "1.75rem",
+		height: "1.75rem",
+		borderRadius: radii.md,
+		backgroundColor: semanticColors.primaryLight,
+		color: semanticColors.primary,
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	formMeta: {
+		fontSize: fontSize.xs,
+		color: semanticColors.textTertiary,
+		fontWeight: fontWeight.medium,
 	},
 	errorBox: {
 		marginBottom: spacing.md,
@@ -39,11 +78,13 @@ const styles = stylex.create({
 		position: "relative",
 		borderRadius: radii.lg,
 		backgroundColor: semanticColors.surfaceInput,
+		border: `1px solid ${semanticColors.borderSubtle}`,
 		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
 	},
 	inputWrapperFocused: {
 		backgroundColor: semanticColors.surfaceCard,
-		boxShadow: "0 0 0 2px rgba(99, 102, 241, 0.12)",
+		borderColor: semanticColors.borderFocus,
+		boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.12)",
 	},
 	textarea: {
 		width: "100%",
@@ -54,6 +95,8 @@ const styles = stylex.create({
 		border: "none",
 		outline: "none",
 		lineHeight: "1.6",
+		minHeight: "7rem",
+		color: semanticColors.textPrimary,
 		"::placeholder": {
 			color: semanticColors.textTertiary,
 		},
@@ -81,7 +124,7 @@ const styles = stylex.create({
 		paddingTop: spacing.sm,
 		paddingBottom: spacing.sm,
 		backgroundColor: semanticColors.surfaceCard,
-		color: colors.indigo500,
+		color: semanticColors.primary,
 		borderRadius: radii.lg,
 		fontWeight: 700,
 		fontSize: "0.875rem",
@@ -124,7 +167,7 @@ const styles = stylex.create({
 		paddingRight: spacing.xl,
 		paddingTop: spacing.sm,
 		paddingBottom: spacing.sm,
-		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.blue600})`,
+		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.cyan500})`,
 		color: colors.white,
 		borderRadius: radii.lg,
 		fontWeight: 600,
@@ -235,6 +278,16 @@ export function PostForm({ onSuccess }: { onSuccess?: () => void }) {
 
 	return (
 		<form onSubmit={handleSubmit} {...stylex.props(styles.form)}>
+			<div {...stylex.props(styles.formHeader)}>
+				<div {...stylex.props(styles.formTitle)}>
+					<span {...stylex.props(styles.titleIcon)}>
+						<Send size={15} />
+					</span>
+					Create post
+				</div>
+				<span {...stylex.props(styles.formMeta)}>{280 - content.length} left</span>
+			</div>
+
 			{error && (
 				<div {...stylex.props(styles.errorBox)}>
 					<AlertCircle {...stylex.props(styles.errorIcon)} size={16} />

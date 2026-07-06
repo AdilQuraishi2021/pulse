@@ -4,7 +4,15 @@ import { Edit, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { togglePostLike } from "../../server/functions/likes";
 import { deletePost } from "../../server/functions/posts";
-import { colors, radii, semanticColors, shadows, spacing } from "../../tokens.stylex";
+import {
+	colors,
+	fontSize,
+	fontWeight,
+	radii,
+	semanticColors,
+	shadows,
+	spacing,
+} from "../../tokens.stylex";
 import { ParsedContent } from "../shared/ParsedContent";
 import { RelativeTime } from "../shared/RelativeTime";
 import { UserAvatar } from "../users/UserAvatar";
@@ -32,15 +40,18 @@ const heartBeat = stylex.keyframes({
 const styles = stylex.create({
 	article: {
 		backgroundColor: semanticColors.surfaceCard,
-		borderRadius: radii.xl,
-		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.03)",
+		borderRadius: radii.lg,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.card,
 		padding: spacing.lg,
-		transition: "box-shadow 0.2s",
+		transition: "box-shadow 0.2s, transform 0.2s, border-color 0.2s",
 		animationName: fadeInUp,
 		animationDuration: "0.3s",
 		animationFillMode: "both",
 		":hover": {
-			boxShadow: shadows.md,
+			borderColor: semanticColors.borderDefault,
+			boxShadow: shadows.cardHover,
+			transform: "translateY(-1px)",
 		},
 	},
 	container: {
@@ -56,9 +67,10 @@ const styles = stylex.create({
 		alignItems: "center",
 		gap: spacing.sm,
 		flexWrap: "wrap",
+		minHeight: "1.5rem",
 	},
 	displayName: {
-		fontWeight: 600,
+		fontWeight: fontWeight.bold,
 		color: semanticColors.textPrimary,
 		textDecoration: "none",
 		transition: "color 0.2s",
@@ -68,7 +80,7 @@ const styles = stylex.create({
 	},
 	username: {
 		color: semanticColors.textTertiary,
-		fontSize: "0.875rem",
+		fontSize: fontSize.sm,
 		textDecoration: "none",
 		transition: "color 0.2s",
 		":hover": {
@@ -90,11 +102,12 @@ const styles = stylex.create({
 	},
 	postContent: {
 		display: "block",
-		marginTop: spacing.sm,
+		marginTop: spacing.md,
 		color: semanticColors.textPrimary,
 		whiteSpace: "pre-wrap",
 		overflowWrap: "break-word",
 		lineHeight: 1.625,
+		fontSize: fontSize.base,
 		textDecoration: "none",
 		transition: "color 0.2s",
 		":hover": {
@@ -105,8 +118,10 @@ const styles = stylex.create({
 		display: "flex",
 		alignItems: "center",
 		gap: spacing.xs,
-		marginTop: spacing.md,
+		marginTop: spacing.lg,
 		marginLeft: "-0.5rem",
+		paddingTop: spacing.sm,
+		borderTop: `1px solid ${semanticColors.borderSubtle}`,
 	},
 	actionButton: {
 		display: "flex",
@@ -124,7 +139,7 @@ const styles = stylex.create({
 		color: semanticColors.textTertiary,
 		":hover": {
 			color: colors.red500,
-			backgroundColor: colors.red50,
+			backgroundColor: semanticColors.errorLight,
 		},
 		":disabled": {
 			opacity: 0.5,
@@ -133,7 +148,7 @@ const styles = stylex.create({
 	},
 	actionButtonLiked: {
 		color: colors.red500,
-		backgroundColor: colors.red50,
+		backgroundColor: semanticColors.errorLight,
 	},
 	commentLink: {
 		display: "flex",
@@ -149,7 +164,7 @@ const styles = stylex.create({
 		transition: "all 0.2s",
 		":hover": {
 			color: colors.blue500,
-			backgroundColor: colors.blue50,
+			backgroundColor: colors.blueAlpha10,
 		},
 	},
 	actionCount: {
@@ -172,7 +187,7 @@ const styles = stylex.create({
 		transition: "all 0.2s",
 		":hover": {
 			color: colors.blue500,
-			backgroundColor: colors.blue50,
+			backgroundColor: colors.blueAlpha10,
 		},
 		":disabled": {
 			opacity: 0.5,
@@ -208,13 +223,14 @@ interface PostCardProps {
 		};
 		likeCount: number;
 		commentCount: number;
+		isLiked?: boolean;
 	};
 	currentUserId?: string;
 	onDelete?: () => void;
 }
 
 export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
-	const [liked, setLiked] = useState(false);
+	const [liked, setLiked] = useState(Boolean(post.isLiked));
 	const [likeCount, setLikeCount] = useState(post.likeCount);
 	const [loading, setLoading] = useState(false);
 	const [animateLike, setAnimateLike] = useState(false);
