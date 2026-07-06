@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
+import { emitAdminAnalytics, emitFollowEvent } from "../realtime/socket";
 import { createNotification } from "./notifications.service";
 import { generateId } from "./utils";
 
@@ -32,6 +33,18 @@ export async function toggleFollow(username: string, followerId: string) {
 	if (existingFollow) {
 		// Unfollow
 		await db.delete(follows).where(eq(follows.id, existingFollow.id));
+		emitFollowEvent({
+			type: "follow:update",
+			userId: userToFollow.id,
+			followerId,
+			following: false,
+		});
+		emitAdminAnalytics({
+			metric: "follows",
+			action: "removed",
+			userId: userToFollow.id,
+			followerId,
+		});
 		return { following: false };
 	} else {
 		// Follow
@@ -46,6 +59,19 @@ export async function toggleFollow(username: string, followerId: string) {
 			userId: userToFollow.id,
 			type: "follow",
 			actorId: followerId,
+		});
+
+		emitFollowEvent({
+			type: "follow:update",
+			userId: userToFollow.id,
+			followerId,
+			following: true,
+		});
+		emitAdminAnalytics({
+			metric: "follows",
+			action: "created",
+			userId: userToFollow.id,
+			followerId,
 		});
 
 		return { following: true };

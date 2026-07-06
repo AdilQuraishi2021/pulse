@@ -2,6 +2,7 @@ import "./env";
 import { node } from "@elysiajs/node";
 import { Elysia } from "elysia";
 import { startGrpcServer } from "./grpc/server";
+import { initializeSocketServer } from "./realtime/socket";
 
 const GRPC_PORT = Number(process.env.GRPC_PORT) || 50051;
 const HTTP_PORT = Number(process.env.HTTP_PORT) || 3001;
@@ -20,9 +21,14 @@ const app = new Elysia({ adapter: node() })
 	}))
 	.listen(HTTP_PORT);
 
+if (app.server) {
+	initializeSocketServer(app.server);
+}
+
 console.log(`🚀 Pulse API started`);
 console.log(`   HTTP server: http://localhost:${HTTP_PORT}`);
 console.log(`   gRPC server: localhost:${GRPC_PORT}`);
+console.log(`   Socket.IO server: ws://localhost:${HTTP_PORT}`);
 
 // Graceful shutdown
 process.on("SIGTERM", () => {

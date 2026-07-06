@@ -19,15 +19,16 @@
 		"@chirp/db-schema": "workspace:*",
 		"@chirp/proto": "workspace:*",
 		"@chirp/shared-types": "workspace:*",
+		"@elysiajs/node": "^1.2.25",
 		"@grpc/grpc-js": "^1.12.6",
 		"@protobuf-ts/grpc-backend": "^2.9.4",
 		"@protobuf-ts/runtime": "^2.9.4",
 		"@protobuf-ts/runtime-rpc": "^2.9.4",
 		"drizzle-orm": "^0.45.1",
 		"elysia": "^1.2.25",
-		"@elysiajs/node": "^1.2.25",
 		"jsonwebtoken": "^9.0.2",
-		"mysql2": "^3.15.3"
+		"mysql2": "^3.15.3",
+		"socket.io": "^4.8.3"
 	},
 	"devDependencies": {
 		"@types/jsonwebtoken": "^9.0.9",

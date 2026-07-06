@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "../db";
+import { emitAdminAnalytics, emitCommentEvent } from "../realtime/socket";
 import { processMentions } from "./mentions.service";
 import { createNotification } from "./notifications.service";
 import { generateId } from "./utils";
@@ -91,6 +92,21 @@ export async function createComment(input: CreateCommentInput) {
 	// Process mentions and create notifications
 	await processMentions(input.content, input.authorId, input.postId, commentId);
 
+	emitCommentEvent("created", {
+		type: "comment:created",
+		commentId,
+		postId: input.postId,
+		userId: input.authorId,
+		parentId: input.parentId,
+	});
+	emitAdminAnalytics({
+		metric: "comments",
+		action: "created",
+		commentId,
+		postId: input.postId,
+		userId: input.authorId,
+	});
+
 	return { commentId };
 }
 
@@ -170,6 +186,20 @@ export async function deleteComment(commentId: string, userId: string) {
 	}
 
 	await db.delete(comments).where(eq(comments.id, commentId));
+
+	emitCommentEvent("deleted", {
+		type: "comment:deleted",
+		commentId,
+		postId: comment.postId,
+		userId,
+	});
+	emitAdminAnalytics({
+		metric: "comments",
+		action: "deleted",
+		commentId,
+		postId: comment.postId,
+		userId,
+	});
 
 	return { success: true };
 }

@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
+import { emitAdminAnalytics, emitPostEvent } from "../realtime/socket";
 import { processMentions } from "./mentions.service";
 import { getPostMetrics, metricsForPost } from "./post-metrics";
 import { generateId } from "./utils";
@@ -41,6 +42,9 @@ export async function createPost(input: CreatePostInput) {
 
 	// Process mentions and create notifications
 	await processMentions(input.content, input.authorId, postId);
+
+	emitPostEvent("created", { type: "post:created", postId, userId: input.authorId });
+	emitAdminAnalytics({ metric: "posts", action: "created", postId, userId: input.authorId });
 
 	return { postId };
 }
@@ -115,6 +119,12 @@ export async function updatePost(input: UpdatePostInput) {
 		})
 		.where(eq(posts.id, input.postId));
 
+	emitPostEvent("updated", {
+		type: "post:updated",
+		postId: input.postId,
+		userId: input.userId,
+	});
+
 	return { success: true };
 }
 
@@ -134,6 +144,9 @@ export async function deletePost(postId: string, userId: string) {
 	}
 
 	await db.delete(posts).where(eq(posts.id, postId));
+
+	emitPostEvent("deleted", { type: "post:deleted", postId, userId });
+	emitAdminAnalytics({ metric: "posts", action: "deleted", postId, userId });
 
 	return { success: true };
 }

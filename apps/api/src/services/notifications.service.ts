@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
+import { emitNotification } from "../realtime/socket";
 import { generateId } from "./utils";
 
 const { notifications, users, posts, comments } = schema;
@@ -32,6 +33,14 @@ export async function createNotification(input: CreateNotificationInput) {
 		actorId: input.actorId,
 		postId: input.postId || null,
 		commentId: input.commentId || null,
+	});
+
+	emitNotification(input.userId, {
+		notificationId,
+		notificationType: input.type,
+		actorId: input.actorId,
+		postId: input.postId,
+		commentId: input.commentId,
 	});
 
 	return { notificationId };

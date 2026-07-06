@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { AlertCircle, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
+import { startTyping, stopTyping } from "../../lib/socket";
 import { createComment } from "../../server/functions/comments";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
 
@@ -127,6 +128,32 @@ export function CommentForm({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 	const [isFocused, setIsFocused] = useState(false);
+	const typingTimeoutRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		return () => {
+			if (typingTimeoutRef.current) {
+				window.clearTimeout(typingTimeoutRef.current);
+			}
+			stopTyping(postId);
+		};
+	}, [postId]);
+
+	const handleContentChange = (value: string) => {
+		setContent(value);
+
+		if (value.trim()) {
+			startTyping(postId);
+		}
+
+		if (typingTimeoutRef.current) {
+			window.clearTimeout(typingTimeoutRef.current);
+		}
+
+		typingTimeoutRef.current = window.setTimeout(() => {
+			stopTyping(postId);
+		}, 1200);
+	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -138,6 +165,7 @@ export function CommentForm({
 		try {
 			await createComment({ data: { postId, content, parentId } });
 			setContent("");
+			stopTyping(postId);
 			broadcastLiveActivity();
 			onSuccess?.();
 		} catch (err) {
@@ -158,9 +186,12 @@ export function CommentForm({
 			<div {...stylex.props(styles.inputWrapper, isFocused && styles.inputWrapperFocused)}>
 				<textarea
 					value={content}
-					onChange={(e) => setContent(e.target.value)}
+					onChange={(e) => handleContentChange(e.target.value)}
 					onFocus={() => setIsFocused(true)}
-					onBlur={() => setIsFocused(false)}
+					onBlur={() => {
+						setIsFocused(false);
+						stopTyping(postId);
+					}}
 					placeholder="Write a comment..."
 					{...stylex.props(styles.textarea)}
 					rows={2}

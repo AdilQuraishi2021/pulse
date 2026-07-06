@@ -7,6 +7,7 @@ import { CommentForm } from "../../components/comments/CommentForm";
 import { PostCard } from "../../components/posts/PostCard";
 import { LoadingSpinner } from "../../components/shared/LoadingSpinner";
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
+import { getSocket, joinPostRoom, leavePostRoom } from "../../lib/socket";
 import { getCurrentUser } from "../../server/functions/auth";
 import { getPostComments } from "../../server/functions/comments";
 import { getPost } from "../../server/functions/posts";
@@ -185,6 +186,12 @@ const styles = stylex.create({
 			textDecoration: "underline",
 		},
 	},
+	typingIndicator: {
+		marginTop: spacing.md,
+		color: semanticColors.primary,
+		fontSize: fontSize.sm,
+		fontWeight: fontWeight.semibold,
+	},
 	commentsList: {
 		paddingLeft: spacing.lg,
 		paddingRight: spacing.lg,
@@ -272,6 +279,7 @@ function PostPage() {
 	const [comments, setComments] = useState<DetailComment[]>([]);
 	const [user, setUser] = useState<{ id: string } | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [typingUsers, setTypingUsers] = useState<Set<string>>(() => new Set());
 
 	const loadData = useCallback(
 		async (options: { silent?: boolean } = {}) => {
@@ -301,6 +309,42 @@ function PostPage() {
 	useEffect(() => {
 		loadData();
 	}, [loadData]);
+
+	useEffect(() => {
+		joinPostRoom(postId);
+
+		const socket = getSocket();
+		const handleTypingUpdate = ({
+			userId,
+			postId: typingPostId,
+			typing,
+		}: {
+			userId?: string;
+			postId?: string;
+			typing?: boolean;
+		}) => {
+			if (!userId || typingPostId !== postId || userId === user?.id) {
+				return;
+			}
+
+			setTypingUsers((current) => {
+				const next = new Set(current);
+				if (typing) {
+					next.add(userId);
+				} else {
+					next.delete(userId);
+				}
+				return next;
+			});
+		};
+
+		socket?.on("typing:update", handleTypingUpdate);
+
+		return () => {
+			socket?.off("typing:update", handleTypingUpdate);
+			leavePostRoom(postId);
+		};
+	}, [postId, user?.id]);
 
 	useLiveRefresh(() => loadData({ silent: true }), { intervalMs: 5000, enabled: Boolean(post) });
 
@@ -369,7 +413,14 @@ function PostPage() {
 					</div>
 
 					{user ? (
-						<CommentForm postId={postId} onSuccess={loadData} />
+						<>
+							{typingUsers.size > 0 && (
+								<div {...stylex.props(styles.typingIndicator)}>
+									{typingUsers.size === 1 ? "Someone is typing..." : "People are typing..."}
+								</div>
+							)}
+							<CommentForm postId={postId} onSuccess={loadData} />
+						</>
 					) : (
 						<div {...stylex.props(styles.loginPrompt)}>
 							<Link to="/auth/login" {...stylex.props(styles.loginLink)}>

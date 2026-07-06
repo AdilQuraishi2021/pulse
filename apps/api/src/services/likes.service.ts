@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
+import { emitAdminAnalytics, emitLikeEvent } from "../realtime/socket";
 import { createNotification } from "./notifications.service";
 import { generateId } from "./utils";
 
@@ -27,6 +28,8 @@ export async function togglePostLike(postId: string, userId: string) {
 	if (existingLike) {
 		// Unlike
 		await db.delete(likes).where(eq(likes.id, existingLike.id));
+		emitLikeEvent({ type: "like:update", postId, userId, liked: false });
+		emitAdminAnalytics({ metric: "likes", action: "removed", postId, userId });
 		return { liked: false };
 	} else {
 		// Like
@@ -43,6 +46,9 @@ export async function togglePostLike(postId: string, userId: string) {
 			actorId: userId,
 			postId,
 		});
+
+		emitLikeEvent({ type: "like:update", postId, userId, liked: true });
+		emitAdminAnalytics({ metric: "likes", action: "created", postId, userId });
 
 		return { liked: true };
 	}
@@ -70,6 +76,20 @@ export async function toggleCommentLike(commentId: string, userId: string) {
 	if (existingLike) {
 		// Unlike
 		await db.delete(likes).where(eq(likes.id, existingLike.id));
+		emitLikeEvent({
+			type: "like:update",
+			commentId,
+			postId: comment.postId,
+			userId,
+			liked: false,
+		});
+		emitAdminAnalytics({
+			metric: "commentLikes",
+			action: "removed",
+			commentId,
+			postId: comment.postId,
+			userId,
+		});
 		return { liked: false };
 	} else {
 		// Like
@@ -85,6 +105,21 @@ export async function toggleCommentLike(commentId: string, userId: string) {
 			type: "like",
 			actorId: userId,
 			commentId,
+		});
+
+		emitLikeEvent({
+			type: "like:update",
+			commentId,
+			postId: comment.postId,
+			userId,
+			liked: true,
+		});
+		emitAdminAnalytics({
+			metric: "commentLikes",
+			action: "created",
+			commentId,
+			postId: comment.postId,
+			userId,
 		});
 
 		return { liked: true };
