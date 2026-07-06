@@ -4,7 +4,7 @@ import { Heart, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteComment } from "../../server/functions/comments";
 import { toggleCommentLike } from "../../server/functions/likes";
-import { colors, radii, spacing } from "../../tokens.stylex";
+import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
 import { ParsedContent } from "../shared/ParsedContent";
 import { RelativeTime } from "../shared/RelativeTime";
 import { UserAvatar } from "../users/UserAvatar";
@@ -34,7 +34,7 @@ const styles = stylex.create({
 		gap: spacing.sm,
 		paddingTop: spacing.md,
 		paddingBottom: spacing.md,
-		borderBottom: `1px solid rgba(241, 245, 249, 0.8)`,
+		borderBottom: `1px solid ${semanticColors.borderSubtle}`,
 		animationName: fadeInUp,
 		animationDuration: "0.3s",
 		animationFillMode: "both",
@@ -53,9 +53,9 @@ const styles = stylex.create({
 		flexWrap: "wrap",
 	},
 	displayName: {
-		fontWeight: 600,
-		fontSize: "0.875rem",
-		color: colors.gray900,
+		fontWeight: fontWeight.bold,
+		fontSize: fontSize.sm,
+		color: semanticColors.textPrimary,
 		textDecoration: "none",
 		transition: "color 0.2s",
 		":hover": {
@@ -63,25 +63,25 @@ const styles = stylex.create({
 		},
 	},
 	username: {
-		color: colors.gray400,
-		fontSize: "0.875rem",
+		color: semanticColors.textTertiary,
+		fontSize: fontSize.sm,
 		textDecoration: "none",
 		transition: "color 0.2s",
 		":hover": {
-			color: colors.gray600,
+			color: semanticColors.textSecondary,
 		},
 	},
 	separator: {
-		color: colors.gray300,
+		color: semanticColors.textTertiary,
 	},
 	time: {
-		color: colors.gray400,
-		fontSize: "0.875rem",
+		color: semanticColors.textTertiary,
+		fontSize: fontSize.sm,
 	},
 	commentContent: {
 		marginTop: spacing.sm,
-		fontSize: "0.875rem",
-		color: colors.gray800,
+		fontSize: fontSize.sm,
+		color: semanticColors.textPrimary,
 		whiteSpace: "pre-wrap",
 		overflowWrap: "break-word",
 		lineHeight: 1.625,
@@ -106,10 +106,10 @@ const styles = stylex.create({
 		backgroundColor: "transparent",
 		border: "none",
 		cursor: "pointer",
-		color: colors.gray400,
+		color: semanticColors.textTertiary,
 		":hover": {
 			color: colors.red500,
-			backgroundColor: colors.red50,
+			backgroundColor: semanticColors.errorLight,
 		},
 		":disabled": {
 			opacity: 0.5,
@@ -118,7 +118,7 @@ const styles = stylex.create({
 	},
 	likeButtonLiked: {
 		color: colors.red500,
-		backgroundColor: colors.red50,
+		backgroundColor: semanticColors.errorLight,
 	},
 	deleteButton: {
 		padding: "0.375rem",
@@ -126,11 +126,11 @@ const styles = stylex.create({
 		backgroundColor: "transparent",
 		border: "none",
 		cursor: "pointer",
-		color: colors.gray400,
+		color: semanticColors.textTertiary,
 		transition: "all 0.2s",
 		":hover": {
 			color: colors.red500,
-			backgroundColor: colors.red50,
+			backgroundColor: semanticColors.errorLight,
 		},
 		":disabled": {
 			opacity: 0.5,
@@ -158,13 +158,16 @@ interface CommentCardProps {
 			avatarUrl?: string | null;
 		};
 		replies?: unknown[];
+		likeCount?: number;
+		isLiked?: boolean;
 	};
 	currentUserId?: string;
 	onDelete?: () => void;
 }
 
 export function CommentCard({ comment, currentUserId, onDelete }: CommentCardProps) {
-	const [liked, setLiked] = useState(false);
+	const [liked, setLiked] = useState(Boolean(comment.isLiked));
+	const [likeCount, setLikeCount] = useState(comment.likeCount || 0);
 	const [loading, setLoading] = useState(false);
 	const [animateLike, setAnimateLike] = useState(false);
 
@@ -177,6 +180,7 @@ export function CommentCard({ comment, currentUserId, onDelete }: CommentCardPro
 		try {
 			const result = await toggleCommentLike({ data: comment.id });
 			setLiked(result.liked);
+			setLikeCount((count) => Math.max(0, result.liked ? count + 1 : count - 1));
 			if (result.liked) {
 				setAnimateLike(true);
 				setTimeout(() => setAnimateLike(false), 400);
@@ -250,6 +254,7 @@ export function CommentCard({ comment, currentUserId, onDelete }: CommentCardPro
 							size={16}
 							{...stylex.props(liked && styles.heartFilled, animateLike && styles.heartBeat)}
 						/>
+						{likeCount > 0 && <span>{likeCount}</span>}
 					</button>
 
 					{isOwnComment && (

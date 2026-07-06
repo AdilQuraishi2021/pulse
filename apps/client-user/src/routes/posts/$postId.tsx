@@ -1,6 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, MessageCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CommentCard } from "../../components/comments/CommentCard";
 import { CommentForm } from "../../components/comments/CommentForm";
 import { PostCard } from "../../components/posts/PostCard";
@@ -8,42 +9,296 @@ import { LoadingSpinner } from "../../components/shared/LoadingSpinner";
 import { getCurrentUser } from "../../server/functions/auth";
 import { getPostComments } from "../../server/functions/comments";
 import { getPost } from "../../server/functions/posts";
+import {
+	colors,
+	fontSize,
+	fontWeight,
+	radii,
+	semanticColors,
+	shadows,
+	spacing,
+} from "../../tokens.stylex";
 
 export const Route = createFileRoute("/posts/$postId")({
 	component: PostPage,
 });
 
+type DetailUser = {
+	id: string;
+	username: string;
+	displayName: string;
+	avatarUrl?: string | null;
+};
+
+type DetailPost = {
+	id: string;
+	content: string;
+	createdAt: Date;
+	updatedAt: Date;
+	author: DetailUser;
+	likeCount: number;
+	commentCount: number;
+	isLiked?: boolean;
+};
+
+type DetailComment = {
+	id: string;
+	content: string;
+	createdAt: Date;
+	author: DetailUser;
+	replies?: DetailComment[];
+};
+
+const styles = stylex.create({
+	container: {
+		maxWidth: "44rem",
+		marginLeft: "auto",
+		marginRight: "auto",
+		paddingLeft: spacing.lg,
+		paddingRight: spacing.lg,
+		paddingTop: spacing["2xl"],
+		paddingBottom: spacing["3xl"],
+	},
+	loadingShell: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		minHeight: "20rem",
+	},
+	header: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: spacing.md,
+		marginBottom: spacing["2xl"],
+	},
+	headerLeft: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.md,
+		minWidth: 0,
+	},
+	backLink: {
+		width: "2.5rem",
+		height: "2.5rem",
+		borderRadius: radii.lg,
+		display: "inline-flex",
+		alignItems: "center",
+		justifyContent: "center",
+		color: semanticColors.textSecondary,
+		backgroundColor: semanticColors.surfaceCard,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.sm,
+		textDecoration: "none",
+		flexShrink: 0,
+		":hover": {
+			color: semanticColors.primary,
+			borderColor: semanticColors.borderFocus,
+			transform: "translateX(-1px)",
+		},
+	},
+	title: {
+		fontSize: fontSize.xl,
+		fontWeight: fontWeight.bold,
+		color: semanticColors.textPrimary,
+		letterSpacing: "0",
+	},
+	subtitle: {
+		fontSize: fontSize.sm,
+		color: semanticColors.textSecondary,
+		marginTop: spacing.xs,
+	},
+	contextPill: {
+		display: "none",
+		alignItems: "center",
+		gap: spacing.xs,
+		paddingLeft: spacing.md,
+		paddingRight: spacing.md,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		borderRadius: radii.full,
+		backgroundColor: semanticColors.primaryLight,
+		color: semanticColors.primary,
+		fontSize: fontSize.xs,
+		fontWeight: fontWeight.bold,
+		"@media (min-width: 640px)": {
+			display: "inline-flex",
+		},
+	},
+	postWrap: {
+		marginBottom: spacing["2xl"],
+	},
+	commentsPanel: {
+		backgroundColor: semanticColors.surfaceCard,
+		borderRadius: radii.lg,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.card,
+		overflow: "hidden",
+	},
+	commentsHeader: {
+		padding: spacing.lg,
+		borderBottom: `1px solid ${semanticColors.borderSubtle}`,
+	},
+	commentsTitleRow: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.md,
+	},
+	commentsIcon: {
+		width: "2.5rem",
+		height: "2.5rem",
+		borderRadius: radii.lg,
+		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.cyan500})`,
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		color: colors.white,
+		boxShadow: shadows.indigoSm,
+		flexShrink: 0,
+	},
+	commentsTitle: {
+		fontSize: fontSize.base,
+		fontWeight: fontWeight.bold,
+		color: semanticColors.textPrimary,
+	},
+	commentsMeta: {
+		fontSize: fontSize.sm,
+		color: semanticColors.textSecondary,
+		marginTop: spacing.xs,
+	},
+	loginPrompt: {
+		marginTop: spacing.lg,
+		padding: spacing.md,
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.bgTertiary,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		textAlign: "center",
+		color: semanticColors.textSecondary,
+		fontSize: fontSize.sm,
+	},
+	loginLink: {
+		color: semanticColors.primary,
+		fontWeight: fontWeight.bold,
+		textDecoration: "none",
+		":hover": {
+			textDecoration: "underline",
+		},
+	},
+	commentsList: {
+		paddingLeft: spacing.lg,
+		paddingRight: spacing.lg,
+	},
+	replyWrap: {
+		marginLeft: spacing["2xl"],
+		paddingLeft: spacing.lg,
+		borderLeft: `2px solid ${semanticColors.borderSubtle}`,
+	},
+	emptyState: {
+		paddingTop: spacing["4xl"],
+		paddingBottom: spacing["4xl"],
+		textAlign: "center",
+	},
+	emptyIcon: {
+		width: "3.5rem",
+		height: "3.5rem",
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.primaryLight,
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		marginLeft: "auto",
+		marginRight: "auto",
+		marginBottom: spacing.lg,
+		color: semanticColors.primary,
+	},
+	emptyTitle: {
+		fontSize: fontSize.base,
+		fontWeight: fontWeight.bold,
+		color: semanticColors.textPrimary,
+		marginBottom: spacing.xs,
+	},
+	emptyText: {
+		fontSize: fontSize.sm,
+		color: semanticColors.textSecondary,
+	},
+	notFoundCard: {
+		backgroundColor: semanticColors.surfaceCard,
+		borderRadius: radii.lg,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: shadows.card,
+		padding: spacing["4xl"],
+		textAlign: "center",
+	},
+	notFoundIcon: {
+		width: "4rem",
+		height: "4rem",
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.errorLight,
+		color: semanticColors.error,
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		marginLeft: "auto",
+		marginRight: "auto",
+		marginBottom: spacing.lg,
+	},
+	homeButton: {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		marginTop: spacing.xl,
+		paddingLeft: spacing.lg,
+		paddingRight: spacing.lg,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.primary,
+		color: colors.white,
+		fontSize: fontSize.sm,
+		fontWeight: fontWeight.bold,
+		textDecoration: "none",
+		boxShadow: shadows.indigoSm,
+		":hover": {
+			backgroundColor: semanticColors.primaryActive,
+			transform: "translateY(-1px)",
+		},
+	},
+});
+
 function PostPage() {
 	const { postId } = Route.useParams();
-	const [post, setPost] = useState<any>(null);
-	const [comments, setComments] = useState<any[]>([]);
-	const [user, setUser] = useState<any>(null);
+	const [post, setPost] = useState<DetailPost | null>(null);
+	const [comments, setComments] = useState<DetailComment[]>([]);
+	const [user, setUser] = useState<{ id: string } | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		loadData();
-	}, [postId]);
-
-	const loadData = async () => {
+	const loadData = useCallback(async () => {
 		try {
+			setLoading(true);
 			const [currentUser, postData, commentsData] = await Promise.all([
 				getCurrentUser(),
 				getPost({ data: postId }),
 				getPostComments({ data: postId }),
 			]);
 			setUser(currentUser);
-			setPost(postData);
-			setComments(commentsData);
+			setPost(postData as DetailPost);
+			setComments(commentsData as DetailComment[]);
 		} catch (error) {
 			console.error("Failed to load post:", error);
+			setPost(null);
+			setComments([]);
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [postId]);
+
+	useEffect(() => {
+		loadData();
+	}, [loadData]);
 
 	if (loading) {
 		return (
-			<div className="max-w-2xl mx-auto px-4 py-16">
+			<div {...stylex.props(styles.container, styles.loadingShell)}>
 				<LoadingSpinner size="lg" />
 			</div>
 		);
@@ -51,18 +306,17 @@ function PostPage() {
 
 	if (!post) {
 		return (
-			<div className="max-w-2xl mx-auto px-4 py-6">
-				<div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-					<div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
-						<AlertCircle className="h-8 w-8 text-red-500" />
+			<div {...stylex.props(styles.container)}>
+				<div {...stylex.props(styles.notFoundCard)}>
+					<div {...stylex.props(styles.notFoundIcon)}>
+						<AlertCircle size={32} />
 					</div>
-					<h3 className="text-lg font-semibold text-gray-900 mb-2">Post not found</h3>
-					<p className="text-gray-500 mb-6">This post may have been deleted or doesn't exist.</p>
-					<Link
-						to="/"
-						className="inline-flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-full font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/25"
-					>
-						<ArrowLeft className="h-4 w-4" />
+					<h3 {...stylex.props(styles.emptyTitle)}>Post not found</h3>
+					<p {...stylex.props(styles.emptyText)}>
+						This post may have been deleted or never existed.
+					</p>
+					<Link to="/" {...stylex.props(styles.homeButton)}>
+						<ArrowLeft size={16} />
 						Back to Home
 					</Link>
 				</div>
@@ -71,76 +325,78 @@ function PostPage() {
 	}
 
 	return (
-		<div className="max-w-2xl mx-auto px-4 py-6">
-			{/* Page Header */}
-			<div className="flex items-center gap-4 mb-6">
-				<Link to="/" className="p-2 rounded-xl hover:bg-gray-100 transition-colors" title="Go back">
-					<ArrowLeft className="h-5 w-5 text-gray-600" />
-				</Link>
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">Post</h1>
-					<p className="text-sm text-gray-500">View post and comments</p>
+		<div {...stylex.props(styles.container)}>
+			<header {...stylex.props(styles.header)}>
+				<div {...stylex.props(styles.headerLeft)}>
+					<Link to="/" {...stylex.props(styles.backLink)} title="Back to feed">
+						<ArrowLeft size={20} />
+					</Link>
+					<div>
+						<h1 {...stylex.props(styles.title)}>Post</h1>
+						<p {...stylex.props(styles.subtitle)}>Read the full post and join the conversation.</p>
+					</div>
 				</div>
+				<div {...stylex.props(styles.contextPill)}>
+					<MessageCircle size={14} />
+					{comments.length}
+				</div>
+			</header>
+
+			<div {...stylex.props(styles.postWrap)}>
+				<PostCard post={post} currentUserId={user?.id} onDelete={() => window.history.back()} />
 			</div>
 
-			{/* Post */}
-			<PostCard post={post} currentUserId={user?.id} onDelete={() => window.history.back()} />
-
-			{/* Comments Section */}
-			<div className="mt-6 bg-white rounded-2xl shadow-sm overflow-hidden">
-				<div className="p-5 border-b border-gray-50">
-					<div className="flex items-center gap-3">
-						<div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-							<MessageCircle className="h-5 w-5 text-white" />
+			<section {...stylex.props(styles.commentsPanel)}>
+				<div {...stylex.props(styles.commentsHeader)}>
+					<div {...stylex.props(styles.commentsTitleRow)}>
+						<div {...stylex.props(styles.commentsIcon)}>
+							<MessageCircle size={20} />
 						</div>
 						<div>
-							<h2 className="font-bold text-gray-900">Comments</h2>
-							<p className="text-sm text-gray-500">
+							<h2 {...stylex.props(styles.commentsTitle)}>Conversation</h2>
+							<p {...stylex.props(styles.commentsMeta)}>
 								{comments.length} {comments.length === 1 ? "comment" : "comments"}
 							</p>
 						</div>
 					</div>
 
-					{user && <CommentForm postId={postId} onSuccess={loadData} />}
+					{user ? (
+						<CommentForm postId={postId} onSuccess={loadData} />
+					) : (
+						<div {...stylex.props(styles.loginPrompt)}>
+							<Link to="/auth/login" {...stylex.props(styles.loginLink)}>
+								Sign in
+							</Link>{" "}
+							to leave a comment.
+						</div>
+					)}
+				</div>
 
-					{!user && (
-						<div className="mt-4 p-4 bg-gray-50 rounded-xl text-center">
-							<p className="text-gray-600 text-sm">
-								<Link to="/auth/login" className="text-blue-600 font-semibold hover:underline">
-									Sign in
-								</Link>{" "}
-								to leave a comment
+				<div {...stylex.props(styles.commentsList)}>
+					{comments.length === 0 ? (
+						<div {...stylex.props(styles.emptyState)}>
+							<div {...stylex.props(styles.emptyIcon)}>
+								<MessageCircle size={26} />
+							</div>
+							<h3 {...stylex.props(styles.emptyTitle)}>No comments yet</h3>
+							<p {...stylex.props(styles.emptyText)}>
+								Start the conversation with a thoughtful reply.
 							</p>
 						</div>
-					)}
-				</div>
-
-				{/* Comments List */}
-				<div className="px-5">
-					{comments.length === 0 ? (
-						<div className="py-12 text-center">
-							<div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-								<MessageCircle className="h-6 w-6 text-gray-400" />
-							</div>
-							<p className="text-gray-500">No comments yet</p>
-							<p className="text-sm text-gray-400 mt-1">Be the first to comment!</p>
-						</div>
 					) : (
-						<div>
-							{comments.map((comment) => (
-								<div key={comment.id}>
-									<CommentCard comment={comment} currentUserId={user?.id} onDelete={loadData} />
-									{comment.replies?.map((reply: any) => (
-										<div key={reply.id} className="ml-8 pl-4 border-l-2 border-gray-100">
-											<CommentCard comment={reply} currentUserId={user?.id} onDelete={loadData} />
-										</div>
-									))}
-								</div>
-							))}
-						</div>
+						comments.map((comment) => (
+							<div key={comment.id}>
+								<CommentCard comment={comment} currentUserId={user?.id} onDelete={loadData} />
+								{comment.replies?.map((reply) => (
+									<div key={reply.id} {...stylex.props(styles.replyWrap)}>
+										<CommentCard comment={reply} currentUserId={user?.id} onDelete={loadData} />
+									</div>
+								))}
+							</div>
+						))
 					)}
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 }
