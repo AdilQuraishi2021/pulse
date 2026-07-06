@@ -1,9 +1,9 @@
 import "./../env";
 import type { AiPostType } from "./ai-validation";
 
-interface ResponsesApiResult {
+interface GeminiInteractionResult {
 	output_text?: string;
-	output?: Array<{
+	steps?: Array<{
 		content?: Array<{
 			type?: string;
 			text?: string;
@@ -14,8 +14,8 @@ interface ResponsesApiResult {
 	};
 }
 
-const DEFAULT_MODEL = "gpt-4.1-mini";
-const OPENAI_TIMEOUT_MS = 20_000;
+const DEFAULT_MODEL = "gemini-3.5-flash";
+const GEMINI_TIMEOUT_MS = 20_000;
 
 const SYSTEM_PROMPT =
 	"You are Pulse's writing assistant. Return only the improved social media post text. Do not wrap the answer in quotes or add commentary.";
@@ -34,13 +34,13 @@ const PROMPTS: Record<AiPostType, string> = {
 		"Improve this post to encourage engagement while staying authentic. Maximum 120 words.",
 };
 
-function extractText(data: ResponsesApiResult) {
+function extractText(data: GeminiInteractionResult) {
 	if (data.output_text) {
 		return data.output_text.trim();
 	}
 
-	const text = data.output
-		?.flatMap((item) => item.content ?? [])
+	const text = data.steps
+		?.flatMap((step) => step.content ?? [])
 		.map((content) => content.text)
 		.filter(Boolean)
 		.join("\n")
@@ -49,39 +49,41 @@ function extractText(data: ResponsesApiResult) {
 	return text || "";
 }
 
-export async function improvePostWithOpenAi(input: { text: string; type: AiPostType }) {
-	const apiKey = process.env.OPENAI_API_KEY;
+export async function improvePostWithGemini(input: { text: string; type: AiPostType }) {
+	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
-		throw new Error("OPENAI_API_KEY is required to use AI writing tools");
+		throw new Error("GEMINI_API_KEY is required to use AI writing tools");
 	}
 
 	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+	const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
 	try {
-		const response = await fetch("https://api.openai.com/v1/responses", {
+		const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
 			method: "POST",
 			headers: {
-				Authorization: `Bearer ${apiKey}`,
+				"x-goog-api-key": apiKey,
 				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-				model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-				instructions: SYSTEM_PROMPT,
+				model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+				system_instruction: SYSTEM_PROMPT,
 				input: `${PROMPTS[input.type]}\n\nText:\n${input.text}`,
-				max_output_tokens: 450,
+				generation_config: {
+					temperature: 0.7,
+				},
 			}),
 			signal: controller.signal,
 		});
 
-		const data = (await response.json()) as ResponsesApiResult;
+		const data = (await response.json()) as GeminiInteractionResult;
 		if (!response.ok) {
-			throw new Error(data.error?.message || "OpenAI request failed");
+			throw new Error(data.error?.message || "Gemini request failed");
 		}
 
 		const text = extractText(data);
 		if (!text) {
-			throw new Error("OpenAI returned an empty response");
+			throw new Error("Gemini returned an empty response");
 		}
 
 		return text;

@@ -3,17 +3,24 @@ import { improvePost } from "./ai.service";
 import { resetAiRateLimits } from "./ai-rate-limiter";
 import { validateAiPostInput } from "./ai-validation";
 
-const originalOpenAiKey = process.env.OPENAI_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API_KEY;
 
 describe("AiService", () => {
 	beforeEach(() => {
 		resetAiRateLimits();
-		process.env.OPENAI_API_KEY = "test-key";
+		process.env.GEMINI_API_KEY = "test-key";
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => ({
 				ok: true,
-				json: async () => ({ output_text: "Improved post" }),
+				json: async () => ({
+					steps: [
+						{
+							content: [{ type: "text", text: "Improved post" }],
+							type: "model_output",
+						},
+					],
+				}),
 			})),
 		);
 	});
@@ -21,10 +28,10 @@ describe("AiService", () => {
 	afterEach(() => {
 		resetAiRateLimits();
 		vi.unstubAllGlobals();
-		if (originalOpenAiKey) {
-			process.env.OPENAI_API_KEY = originalOpenAiKey;
+		if (originalGeminiKey) {
+			process.env.GEMINI_API_KEY = originalGeminiKey;
 		} else {
-			delete process.env.OPENAI_API_KEY;
+			delete process.env.GEMINI_API_KEY;
 		}
 	});
 
@@ -45,7 +52,7 @@ describe("AiService", () => {
 		expect(() => validateAiPostInput({ text: "   ", type: "grammar" })).toThrow("Text is required");
 	});
 
-	it("returns improved text from OpenAI", async () => {
+	it("returns improved text from Gemini", async () => {
 		const result = await improvePost({
 			text: "Today i go office and working.",
 			type: "grammar",
@@ -54,11 +61,11 @@ describe("AiService", () => {
 
 		expect(result.text).toBe("Improved post");
 		expect(fetch).toHaveBeenCalledWith(
-			"https://api.openai.com/v1/responses",
+			"https://generativelanguage.googleapis.com/v1beta/interactions",
 			expect.objectContaining({
 				method: "POST",
 				headers: expect.objectContaining({
-					Authorization: "Bearer test-key",
+					"x-goog-api-key": "test-key",
 				}),
 			}),
 		);
@@ -82,8 +89,8 @@ describe("AiService", () => {
 		).rejects.toThrow("AI request limit reached");
 	});
 
-	it("requires an OpenAI API key", async () => {
-		delete process.env.OPENAI_API_KEY;
+	it("requires a Gemini API key", async () => {
+		delete process.env.GEMINI_API_KEY;
 
 		await expect(
 			improvePost({
@@ -91,6 +98,6 @@ describe("AiService", () => {
 				type: "friendly",
 				userId: "user-1",
 			}),
-		).rejects.toThrow("OPENAI_API_KEY is required");
+		).rejects.toThrow("GEMINI_API_KEY is required");
 	});
 });

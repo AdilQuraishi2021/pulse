@@ -212,11 +212,11 @@ The API reads environment variables from the process environment and local `.env
 DATABASE_URL=mysql://user:password@localhost:3306/chirp
 GRPC_JWT_SECRET=replace-with-a-long-random-secret
 SESSION_SECRET=replace-with-a-long-random-secret
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=your-google-ai-studio-key
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
-`OPENAI_API_KEY` is required only for AI writing tools. `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`.
+`GEMINI_API_KEY` is required only for AI writing tools. You can create a free development key in Google AI Studio. `GEMINI_MODEL` is optional and defaults to `gemini-3.5-flash`.
 
 ### Adding a New Feature
 
