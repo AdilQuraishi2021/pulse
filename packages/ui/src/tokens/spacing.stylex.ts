@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
 /**
- * Spacing design tokens for Chirp UI
+ * Spacing design tokens for Pulse UI
  * Based on 4px base unit (similar to Tailwind's spacing scale)
  */
 export const spacing = stylex.defineVars({

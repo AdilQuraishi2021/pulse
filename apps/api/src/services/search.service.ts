@@ -8,13 +8,13 @@ async function getPostCounts(postId: string, userId?: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(likes)
 		.where(eq(likes.postId, postId))
-		.get();
+		.then((rows) => rows[0]);
 
 	const commentsResult = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(comments)
 		.where(eq(comments.postId, postId))
-		.get();
+		.then((rows) => rows[0]);
 
 	let isLiked = false;
 	if (userId) {
@@ -22,7 +22,7 @@ async function getPostCounts(postId: string, userId?: string) {
 			.select()
 			.from(likes)
 			.where(and(eq(likes.postId, postId), eq(likes.userId, userId)))
-			.get();
+			.then((rows) => rows[0]);
 		isLiked = !!likeStatus;
 	}
 

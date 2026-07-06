@@ -1,3 +1,4 @@
+import "./env";
 import { node } from "@elysiajs/node";
 import { Elysia } from "elysia";
 import { startGrpcServer } from "./grpc/server";
@@ -12,14 +13,14 @@ const grpcServer = await startGrpcServer(GRPC_PORT);
 const app = new Elysia({ adapter: node() })
 	.get("/health", () => ({ status: "ok", grpc: `localhost:${GRPC_PORT}` }))
 	.get("/", () => ({
-		name: "Chirp API",
+		name: "Pulse API",
 		version: "1.0.0",
 		grpcPort: GRPC_PORT,
 		httpPort: HTTP_PORT,
 	}))
 	.listen(HTTP_PORT);
 
-console.log(`🚀 Chirp API started`);
+console.log(`🚀 Pulse API started`);
 console.log(`   HTTP server: http://localhost:${HTTP_PORT}`);
 console.log(`   gRPC server: localhost:${GRPC_PORT}`);
 

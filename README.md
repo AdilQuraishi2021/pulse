@@ -1,4 +1,4 @@
-# Chirp - Social Media Platform
+# Pulse - Social Media Platform
 
 A Twitter-like social media platform built as a monorepo with TanStack Start, React 19, gRPC, StyleX, and SQLite.
 
@@ -6,7 +6,7 @@ A Twitter-like social media platform built as a monorepo with TanStack Start, Re
 
 ## Architecture
 
-Chirp is a full-stack monorepo application with:
+Pulse is a full-stack monorepo application with:
 
 - **User App** (`apps/client-user`) - Consumer-facing social media application
 - **Admin App** (`apps/client-admin`) - Administrative dashboard for content moderation
@@ -50,7 +50,7 @@ After running the seed script:
 - eve@test.com / password123
 
 ### Admin User
-- admin@chirp.com / admin123
+- admin@chirp.test / admin123
 
 ## Features
 
@@ -58,7 +58,7 @@ After running the seed script:
 
 #### Core Features
 - **Authentication** - Email/password registration, login, session management
-- **Posts (Chirps)** - Create, edit (within 5 min), delete text posts (max 280 chars)
+- **Posts** - Create, edit (within 5 min), delete text posts (max 280 chars)
 - **Comments** - Add/delete comments, nested threads (1 level deep)
 - **Likes** - Like/unlike posts and comments
 - **User Profiles** - View profiles, edit own profile (name, bio, avatar)
@@ -86,7 +86,7 @@ After running the seed script:
 ## Project Structure
 
 ```
-chirp/
+pulse/
 ├── apps/
 │   ├── api/                    # gRPC API server
 │   │   ├── src/
@@ -190,7 +190,7 @@ pnpm run test:e2e         # Run E2E tests only (client apps)
 
 ### Core Tables
 - `users` - User accounts and profiles
-- `posts` - User posts/chirps
+- `posts` - User posts
 - `comments` - Post comments
 - `likes` - Post and comment likes
 - `follows` - User follow relationships
@@ -233,7 +233,7 @@ cd apps/client-user && pnpm exec playwright test --ui
 ```bash
 # Clean everything and start fresh
 pnpm run clean
-rm -f chirp.db chirp.db-shm chirp.db-wal
+rm -f pulse.db pulse.db-shm pulse.db-wal
 pnpm install
 pnpm run proto:generate
 pnpm run db:generate

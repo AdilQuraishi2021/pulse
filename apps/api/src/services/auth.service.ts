@@ -19,7 +19,11 @@ export interface LoginInput {
 
 export async function registerUser(input: RegisterInput) {
 	// Check if email already exists
-	const existingEmail = await db.select().from(users).where(eq(users.email, input.email)).get();
+	const existingEmail = await db
+		.select()
+		.from(users)
+		.where(eq(users.email, input.email))
+		.then((rows) => rows[0]);
 
 	if (existingEmail) {
 		throw new Error("User with this email already exists");
@@ -30,7 +34,7 @@ export async function registerUser(input: RegisterInput) {
 		.select()
 		.from(users)
 		.where(eq(users.username, input.username))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingUsername) {
 		throw new Error("Username already taken");
@@ -62,7 +66,11 @@ export async function registerUser(input: RegisterInput) {
 
 export async function loginUser(input: LoginInput) {
 	// Find user by email
-	const user = await db.select().from(users).where(eq(users.email, input.email)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.email, input.email))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("Invalid email or password");
@@ -110,7 +118,7 @@ export async function getCurrentUser(userId: string) {
 		})
 		.from(users)
 		.where(eq(users.id, userId))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");

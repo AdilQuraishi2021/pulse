@@ -62,7 +62,7 @@ export async function getPost(postId: string, userId?: string) {
 		.from(posts)
 		.leftJoin(users, eq(posts.authorId, users.id))
 		.where(eq(posts.id, postId))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -86,7 +86,11 @@ export async function updatePost(input: UpdatePostInput) {
 		throw new Error("Post content must be 280 characters or less");
 	}
 
-	const post = await db.select().from(posts).where(eq(posts.id, input.postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, input.postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -115,7 +119,11 @@ export async function updatePost(input: UpdatePostInput) {
 }
 
 export async function deletePost(postId: string, userId: string) {
-	const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -166,7 +174,11 @@ export async function getPosts(options: GetPostsOptions = {}) {
 }
 
 export async function getUserPosts(username: string, userId?: string) {
-	const user = await db.select().from(users).where(eq(users.username, username)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");

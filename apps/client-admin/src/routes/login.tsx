@@ -144,7 +144,7 @@ function LoginPage() {
 		<div {...stylex.props(styles.container)}>
 			<div {...stylex.props(styles.card)}>
 				<div {...stylex.props(styles.header)}>
-					<h1 {...stylex.props(styles.title)}>Chirp Admin</h1>
+					<h1 {...stylex.props(styles.title)}>Pulse Admin</h1>
 					<p {...stylex.props(styles.subtitle)}>Sign in to access the admin dashboard</p>
 				</div>
 
@@ -162,7 +162,7 @@ function LoginPage() {
 							type="email"
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
-							placeholder="admin@chirp.com"
+							placeholder="admin@chirp.test"
 							required
 							autoComplete="email"
 						/>

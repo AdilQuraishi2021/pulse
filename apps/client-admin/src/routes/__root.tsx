@@ -41,7 +41,7 @@ export const Route = createRootRoute({
 				content: "light dark",
 			},
 			{
-				title: "Chirp Admin",
+				title: "Pulse Admin",
 			},
 		],
 		links: [

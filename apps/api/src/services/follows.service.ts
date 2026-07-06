@@ -7,7 +7,11 @@ const { follows, users } = schema;
 
 export async function toggleFollow(username: string, followerId: string) {
 	// Find user to follow
-	const userToFollow = await db.select().from(users).where(eq(users.username, username)).get();
+	const userToFollow = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username))
+		.then((rows) => rows[0]);
 
 	if (!userToFollow) {
 		throw new Error("User not found");
@@ -23,7 +27,7 @@ export async function toggleFollow(username: string, followerId: string) {
 		.select()
 		.from(follows)
 		.where(and(eq(follows.followerId, followerId), eq(follows.followingId, userToFollow.id)))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingFollow) {
 		// Unfollow
@@ -49,7 +53,11 @@ export async function toggleFollow(username: string, followerId: string) {
 }
 
 export async function getFollowStatus(username: string, followerId: string) {
-	const userToCheck = await db.select().from(users).where(eq(users.username, username)).get();
+	const userToCheck = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username))
+		.then((rows) => rows[0]);
 
 	if (!userToCheck) {
 		throw new Error("User not found");
@@ -59,13 +67,17 @@ export async function getFollowStatus(username: string, followerId: string) {
 		.select()
 		.from(follows)
 		.where(and(eq(follows.followerId, followerId), eq(follows.followingId, userToCheck.id)))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { following: !!follow };
 }
 
 export async function getFollowerCount(username: string) {
-	const user = await db.select().from(users).where(eq(users.username, username)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -75,13 +87,17 @@ export async function getFollowerCount(username: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(follows)
 		.where(eq(follows.followingId, user.id))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { count: result?.count || 0 };
 }
 
 export async function getFollowingCount(username: string) {
-	const user = await db.select().from(users).where(eq(users.username, username)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.username, username))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -91,7 +107,7 @@ export async function getFollowingCount(username: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(follows)
 		.where(eq(follows.followerId, user.id))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { count: result?.count || 0 };
 }

@@ -235,7 +235,7 @@ function DashboardPage() {
 		<main {...stylex.props(styles.container)}>
 			<header {...stylex.props(styles.header)}>
 				<h1 {...stylex.props(styles.title)}>Dashboard</h1>
-				<p {...stylex.props(styles.subtitle)}>Overview of Chirp platform activity</p>
+				<p {...stylex.props(styles.subtitle)}>Overview of Pulse platform activity</p>
 			</header>
 
 			<div {...stylex.props(styles.statsGrid)}>

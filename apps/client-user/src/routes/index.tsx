@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PostForm } from "../components/posts/PostForm";
 import { PostList } from "../components/posts/PostList";
 import { getCurrentUser } from "../server/functions/auth";
@@ -125,11 +125,7 @@ function HomePage() {
 	const [user, setUser] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		loadData();
-	}, []);
-
-	const loadData = async () => {
+	const loadData = useCallback(async () => {
 		try {
 			const [currentUser, feedPosts] = await Promise.all([
 				getCurrentUser(),
@@ -142,7 +138,11 @@ function HomePage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadData();
+	}, [loadData]);
 
 	if (!user && !loading) {
 		return (
@@ -151,7 +151,7 @@ function HomePage() {
 					<div {...stylex.props(styles.welcomeIcon)}>
 						<MessageCircle size={40} {...stylex.props(styles.iconWhite)} />
 					</div>
-					<h2 {...stylex.props(styles.welcomeTitle)}>Welcome to Chirp</h2>
+					<h2 {...stylex.props(styles.welcomeTitle)}>Welcome to Pulse</h2>
 					<p {...stylex.props(styles.welcomeText)}>
 						Please log in to view your personalized feed and connect with others.
 					</p>

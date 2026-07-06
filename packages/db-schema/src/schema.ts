@@ -1,64 +1,77 @@
-import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import {
+	boolean,
+	mysqlEnum,
+	mysqlTable,
+	text,
+	timestamp,
+	unique,
+	varchar,
+} from "drizzle-orm/mysql-core";
+
+const id = (name: string) => varchar(name, { length: 191 });
 
 // Users table with role-based admin support
-export const users = sqliteTable("users", {
-	id: text("id").primaryKey(),
-	email: text("email").notNull().unique(),
-	username: text("username").notNull().unique(),
-	displayName: text("display_name").notNull(),
+export const users = mysqlTable("users", {
+	id: id("id").primaryKey(),
+	email: varchar("email", { length: 255 }).notNull().unique(),
+	username: varchar("username", { length: 64 }).notNull().unique(),
+	displayName: varchar("display_name", { length: 255 }).notNull(),
 	avatarUrl: text("avatar_url"),
 	bio: text("bio"),
 	passwordHash: text("password_hash").notNull(),
 	// Role-based access control
-	role: text("role", { enum: ["user", "admin", "moderator"] })
-		.notNull()
-		.default("user"),
+	role: mysqlEnum("role", ["user", "admin", "moderator"]).notNull().default("user"),
 	// Ban status
-	bannedAt: integer("banned_at", { mode: "timestamp" }),
+	bannedAt: timestamp("banned_at"),
 	bannedReason: text("banned_reason"),
-	bannedBy: text("banned_by"),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	bannedBy: id("banned_by"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at")
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => new Date()),
 });
 
 // Posts table
-export const posts = sqliteTable("posts", {
-	id: text("id").primaryKey(),
+export const posts = mysqlTable("posts", {
+	id: id("id").primaryKey(),
 	content: text("content").notNull(),
-	authorId: text("author_id")
+	authorId: id("author_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at")
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => new Date()),
 });
 
 // Comments table
-export const comments = sqliteTable("comments", {
-	id: text("id").primaryKey(),
+export const comments = mysqlTable("comments", {
+	id: id("id").primaryKey(),
 	content: text("content").notNull(),
-	postId: text("post_id")
+	postId: id("post_id")
 		.notNull()
 		.references(() => posts.id, { onDelete: "cascade" }),
-	authorId: text("author_id")
+	authorId: id("author_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
 	// biome-ignore lint/suspicious/noExplicitAny: self-reference requires any
-	parentId: text("parent_id").references((): any => comments.id, { onDelete: "cascade" }),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	parentId: id("parent_id").references((): any => comments.id, { onDelete: "cascade" }),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Likes table
-export const likes = sqliteTable(
+export const likes = mysqlTable(
 	"likes",
 	{
-		id: text("id").primaryKey(),
-		userId: text("user_id")
+		id: id("id").primaryKey(),
+		userId: id("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		postId: text("post_id").references(() => posts.id, { onDelete: "cascade" }),
-		commentId: text("comment_id").references(() => comments.id, { onDelete: "cascade" }),
-		createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+		postId: id("post_id").references(() => posts.id, { onDelete: "cascade" }),
+		commentId: id("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => ({
 		uniquePostLike: unique().on(table.userId, table.postId),
@@ -67,17 +80,17 @@ export const likes = sqliteTable(
 );
 
 // Follows table
-export const follows = sqliteTable(
+export const follows = mysqlTable(
 	"follows",
 	{
-		id: text("id").primaryKey(),
-		followerId: text("follower_id")
+		id: id("id").primaryKey(),
+		followerId: id("follower_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		followingId: text("following_id")
+		followingId: id("following_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => ({
 		uniqueFollow: unique().on(table.followerId, table.followingId),
@@ -85,17 +98,17 @@ export const follows = sqliteTable(
 );
 
 // Bookmarks table
-export const bookmarks = sqliteTable(
+export const bookmarks = mysqlTable(
 	"bookmarks",
 	{
-		id: text("id").primaryKey(),
-		userId: text("user_id")
+		id: id("id").primaryKey(),
+		userId: id("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		postId: text("post_id")
+		postId: id("post_id")
 			.notNull()
 			.references(() => posts.id, { onDelete: "cascade" }),
-		createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => ({
 		uniqueBookmark: unique().on(table.userId, table.postId),
@@ -103,51 +116,51 @@ export const bookmarks = sqliteTable(
 );
 
 // Notifications table
-export const notifications = sqliteTable("notifications", {
-	id: text("id").primaryKey(),
-	userId: text("user_id")
+export const notifications = mysqlTable("notifications", {
+	id: id("id").primaryKey(),
+	userId: id("user_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
-	type: text("type").notNull(),
-	actorId: text("actor_id")
+	type: varchar("type", { length: 64 }).notNull(),
+	actorId: id("actor_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
-	postId: text("post_id").references(() => posts.id, { onDelete: "cascade" }),
-	commentId: text("comment_id").references(() => comments.id, { onDelete: "cascade" }),
-	read: integer("read", { mode: "boolean" }).notNull().default(false),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	postId: id("post_id").references(() => posts.id, { onDelete: "cascade" }),
+	commentId: id("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+	read: boolean("read").notNull().default(false),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Reports table for content moderation
-export const reports = sqliteTable("reports", {
-	id: text("id").primaryKey(),
-	reporterId: text("reporter_id")
+export const reports = mysqlTable("reports", {
+	id: id("id").primaryKey(),
+	reporterId: id("reporter_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
-	targetType: text("target_type", { enum: ["post", "comment", "user"] }).notNull(),
-	targetId: text("target_id").notNull(),
-	reason: text("reason").notNull(),
+	targetType: mysqlEnum("target_type", ["post", "comment", "user"]).notNull(),
+	targetId: id("target_id").notNull(),
+	reason: varchar("reason", { length: 255 }).notNull(),
 	description: text("description"),
-	status: text("status", { enum: ["pending", "reviewed", "actioned", "dismissed"] })
+	status: mysqlEnum("status", ["pending", "reviewed", "actioned", "dismissed"])
 		.notNull()
 		.default("pending"),
-	reviewedBy: text("reviewed_by").references(() => users.id),
-	reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	reviewedBy: id("reviewed_by").references(() => users.id),
+	reviewedAt: timestamp("reviewed_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Audit logs table for admin actions
-export const auditLogs = sqliteTable("audit_logs", {
-	id: text("id").primaryKey(),
-	adminId: text("admin_id")
+export const auditLogs = mysqlTable("audit_logs", {
+	id: id("id").primaryKey(),
+	adminId: id("admin_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
-	action: text("action").notNull(),
-	targetType: text("target_type", { enum: ["user", "post", "comment", "report"] }),
-	targetId: text("target_id"),
+	action: varchar("action", { length: 255 }).notNull(),
+	targetType: mysqlEnum("target_type", ["user", "post", "comment", "report"]),
+	targetId: id("target_id"),
 	details: text("details"), // JSON string for additional details
-	ipAddress: text("ip_address"),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Export types

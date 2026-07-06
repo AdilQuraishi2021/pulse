@@ -294,7 +294,7 @@ function SearchPage() {
 							value={query}
 							onChange={(e) => setQuery(e.target.value)}
 							onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-							placeholder="Search Chirp..."
+							placeholder="Search Pulse..."
 							{...stylex.props(styles.searchInput)}
 						/>
 					</div>

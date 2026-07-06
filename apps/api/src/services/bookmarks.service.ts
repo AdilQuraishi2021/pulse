@@ -10,7 +10,11 @@ const { bookmarks, posts, users } = schema;
  */
 export async function toggleBookmark(postId: string, userId: string) {
 	// Verify post exists
-	const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -21,7 +25,7 @@ export async function toggleBookmark(postId: string, userId: string) {
 		.select()
 		.from(bookmarks)
 		.where(and(eq(bookmarks.postId, postId), eq(bookmarks.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingBookmark) {
 		// Remove bookmark
@@ -46,7 +50,7 @@ export async function getBookmarkStatus(postId: string, userId: string) {
 		.select()
 		.from(bookmarks)
 		.where(and(eq(bookmarks.postId, postId), eq(bookmarks.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { bookmarked: !!bookmark };
 }

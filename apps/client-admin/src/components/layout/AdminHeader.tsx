@@ -162,7 +162,7 @@ export function AdminHeader() {
 				<div {...stylex.props(styles.logoSection)}>
 					<Link to="/" {...stylex.props(styles.logo)}>
 						<Shield size={24} {...stylex.props(styles.logoIcon)} />
-						Chirp
+						Pulse
 					</Link>
 					<span {...stylex.props(styles.badge)}>Admin</span>
 				</div>

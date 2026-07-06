@@ -74,7 +74,7 @@ export async function getUserNotifications(userId: string, limit = 20, offset = 
 					.select({ content: posts.content })
 					.from(posts)
 					.where(eq(posts.id, notification.postId))
-					.get();
+					.then((rows) => rows[0]);
 				postContent = post?.content?.substring(0, 100) || null;
 			}
 
@@ -83,7 +83,7 @@ export async function getUserNotifications(userId: string, limit = 20, offset = 
 					.select({ content: comments.content })
 					.from(comments)
 					.where(eq(comments.id, notification.commentId))
-					.get();
+					.then((rows) => rows[0]);
 				commentContent = comment?.content?.substring(0, 100) || null;
 			}
 
@@ -106,7 +106,7 @@ export async function getUnreadCount(userId: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(notifications)
 		.where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { count: result?.count || 0 };
 }
@@ -119,7 +119,7 @@ export async function markAsRead(notificationId: string, userId: string) {
 		.select()
 		.from(notifications)
 		.where(eq(notifications.id, notificationId))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (!notification) {
 		throw new Error("Notification not found");
@@ -151,7 +151,7 @@ export async function deleteNotification(notificationId: string, userId: string)
 		.select()
 		.from(notifications)
 		.where(eq(notifications.id, notificationId))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (!notification) {
 		throw new Error("Notification not found");

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
 /**
- * Typography design tokens for Chirp UI
+ * Typography design tokens for Pulse UI
  */
 export const fontFamily = stylex.defineVars({
 	sans: 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',

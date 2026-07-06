@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { hashPassword } from "../services/utils";
-import { db, schema } from "./index";
+import { client, db, schema } from "./index";
 
 const { users, posts, comments, likes, follows } = schema;
 
@@ -18,7 +18,7 @@ async function getUserId(username: string) {
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, username))
-		.get();
+		.then((rows) => rows[0]);
 	if (!user) {
 		throw new Error(`Seed user not found: ${username}`);
 	}
@@ -30,15 +30,19 @@ async function getOrCreatePost(seedId: string, content: string, authorId: string
 		.select({ id: posts.id })
 		.from(posts)
 		.where(and(eq(posts.content, content), eq(posts.authorId, authorId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingPost) {
 		return existingPost.id;
 	}
 
-	await db.insert(posts).values({ id: seedId, content, authorId }).onConflictDoNothing();
+	await db.insert(posts).ignore().values({ id: seedId, content, authorId });
 
-	const post = await db.select({ id: posts.id }).from(posts).where(eq(posts.id, seedId)).get();
+	const post = await db
+		.select({ id: posts.id })
+		.from(posts)
+		.where(eq(posts.id, seedId))
+		.then((rows) => rows[0]);
 	if (!post) {
 		throw new Error(`Seed post not found after insert: ${seedId}`);
 	}
@@ -61,19 +65,19 @@ async function getOrCreateComment(
 				eq(comments.authorId, authorId),
 			),
 		)
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingComment) {
 		return existingComment.id;
 	}
 
-	await db.insert(comments).values({ id: seedId, content, postId, authorId }).onConflictDoNothing();
+	await db.insert(comments).ignore().values({ id: seedId, content, postId, authorId });
 
 	const comment = await db
 		.select({ id: comments.id })
 		.from(comments)
 		.where(eq(comments.id, seedId))
-		.get();
+		.then((rows) => rows[0]);
 	if (!comment) {
 		throw new Error(`Seed comment not found after insert: ${seedId}`);
 	}
@@ -146,6 +150,7 @@ async function seed() {
 		const passwordHash = await hashPassword(user.password);
 		await db
 			.insert(users)
+			.ignore()
 			.values({
 				id: `seed-user-${user.username}`,
 				email: user.email,
@@ -154,8 +159,7 @@ async function seed() {
 				passwordHash,
 				role: user.role,
 				bio: user.bio,
-			})
-			.onConflictDoNothing();
+			});
 		console.log(`Created user: ${user.username}`);
 	}
 
@@ -258,6 +262,7 @@ async function seed() {
 
 	await db
 		.insert(likes)
+		.ignore()
 		.values([
 			{ id: "seed-like-1", userId: bobId, postId: post1Id },
 			{ id: "seed-like-2", userId: charlieId, postId: post1Id },
@@ -276,12 +281,12 @@ async function seed() {
 			{ id: "seed-like-15", userId: dianaId, postId: post7Id },
 			{ id: "seed-like-16", userId: bobId, postId: post8Id },
 			{ id: "seed-like-17", userId: charlieId, postId: post8Id },
-		])
-		.onConflictDoNothing();
+		]);
 	console.log("Created sample likes");
 
 	await db
 		.insert(follows)
+		.ignore()
 		.values([
 			{ id: "seed-follow-1", followerId: bobId, followingId: aliceId },
 			{ id: "seed-follow-2", followerId: charlieId, followingId: aliceId },
@@ -292,11 +297,17 @@ async function seed() {
 			{ id: "seed-follow-7", followerId: bobId, followingId: charlieId },
 			{ id: "seed-follow-8", followerId: aliceId, followingId: dianaId },
 			{ id: "seed-follow-9", followerId: bobId, followingId: dianaId },
-		])
-		.onConflictDoNothing();
+		]);
 	console.log("Created sample follows");
 
 	console.log("Database seeded successfully!");
 }
 
-seed().catch(console.error);
+seed()
+	.catch((error) => {
+		console.error(error);
+		process.exitCode = 1;
+	})
+	.finally(async () => {
+		await client.end();
+	});

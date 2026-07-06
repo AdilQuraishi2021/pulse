@@ -306,7 +306,7 @@ function RegisterPage() {
 					<div {...stylex.props(styles.brandingLogo)}>
 						<MessageCircle size={48} {...stylex.props(styles.iconWhite)} />
 					</div>
-					<h1 {...stylex.props(styles.brandingTitle)}>Join Chirp</h1>
+					<h1 {...stylex.props(styles.brandingTitle)}>Join Pulse</h1>
 					<p {...stylex.props(styles.brandingSubtitle)}>
 						Start sharing your thoughts and connect with amazing people today.
 					</p>

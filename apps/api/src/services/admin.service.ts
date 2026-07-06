@@ -63,13 +63,13 @@ export async function listUsers(options: ListUsersOptions = {}) {
 				.select({ count: sql<number>`count(*)` })
 				.from(posts)
 				.where(eq(posts.authorId, user.id))
-				.get();
+				.then((rows) => rows[0]);
 
 			const commentCount = await db
 				.select({ count: sql<number>`count(*)` })
 				.from(comments)
 				.where(eq(comments.authorId, user.id))
-				.get();
+				.then((rows) => rows[0]);
 
 			return {
 				...user,
@@ -80,7 +80,10 @@ export async function listUsers(options: ListUsersOptions = {}) {
 	);
 
 	// Get total count
-	const totalResult = await db.select({ count: sql<number>`count(*)` }).from(users).get();
+	const totalResult = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(users)
+		.then((rows) => rows[0]);
 
 	return {
 		users: usersWithCounts,
@@ -89,7 +92,11 @@ export async function listUsers(options: ListUsersOptions = {}) {
 }
 
 export async function getUserDetails(userId: string) {
-	const user = await db.select().from(users).where(eq(users.id, userId)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, userId))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -99,13 +106,13 @@ export async function getUserDetails(userId: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(posts)
 		.where(eq(posts.authorId, userId))
-		.get();
+		.then((rows) => rows[0]);
 
 	const commentCount = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(comments)
 		.where(eq(comments.authorId, userId))
-		.get();
+		.then((rows) => rows[0]);
 
 	const { passwordHash: _, ...userWithoutPassword } = user;
 
@@ -117,7 +124,11 @@ export async function getUserDetails(userId: string) {
 }
 
 export async function banUser(userId: string, reason: string, adminId: string) {
-	const user = await db.select().from(users).where(eq(users.id, userId)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, userId))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -143,7 +154,11 @@ export async function banUser(userId: string, reason: string, adminId: string) {
 }
 
 export async function unbanUser(userId: string, adminId: string) {
-	const user = await db.select().from(users).where(eq(users.id, userId)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, userId))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -170,7 +185,11 @@ export async function updateUserRole(userId: string, role: string, adminId: stri
 		throw new Error("Invalid role");
 	}
 
-	const user = await db.select().from(users).where(eq(users.id, userId)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, userId))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -191,7 +210,11 @@ export async function updateUserRole(userId: string, role: string, adminId: stri
 }
 
 export async function deleteUser(userId: string, adminId: string) {
-	const user = await db.select().from(users).where(eq(users.id, userId)).get();
+	const user = await db
+		.select()
+		.from(users)
+		.where(eq(users.id, userId))
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");
@@ -210,7 +233,11 @@ export async function deleteUser(userId: string, adminId: string) {
 }
 
 export async function deletePostAdmin(postId: string, reason: string, adminId: string) {
-	const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -225,7 +252,11 @@ export async function deletePostAdmin(postId: string, reason: string, adminId: s
 }
 
 export async function deleteCommentAdmin(commentId: string, reason: string, adminId: string) {
-	const comment = await db.select().from(comments).where(eq(comments.id, commentId)).get();
+	const comment = await db
+		.select()
+		.from(comments)
+		.where(eq(comments.id, commentId))
+		.then((rows) => rows[0]);
 
 	if (!comment) {
 		throw new Error("Comment not found");
@@ -278,7 +309,7 @@ export async function listReports(options: ListReportsOptions = {}) {
 				.select({ username: users.username })
 				.from(users)
 				.where(eq(users.id, report.reporterId))
-				.get();
+				.then((rows) => rows[0]);
 
 			return {
 				...report,
@@ -287,7 +318,10 @@ export async function listReports(options: ListReportsOptions = {}) {
 		}),
 	);
 
-	const totalResult = await db.select({ count: sql<number>`count(*)` }).from(reports).get();
+	const totalResult = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(reports)
+		.then((rows) => rows[0]);
 
 	return {
 		reports: reportsWithUsernames,
@@ -296,7 +330,11 @@ export async function listReports(options: ListReportsOptions = {}) {
 }
 
 export async function getReport(reportId: string) {
-	const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
+	const report = await db
+		.select()
+		.from(reports)
+		.where(eq(reports.id, reportId))
+		.then((rows) => rows[0]);
 
 	if (!report) {
 		throw new Error("Report not found");
@@ -306,7 +344,7 @@ export async function getReport(reportId: string) {
 		.select({ username: users.username })
 		.from(users)
 		.where(eq(users.id, report.reporterId))
-		.get();
+		.then((rows) => rows[0]);
 
 	return {
 		...report,
@@ -320,7 +358,11 @@ export async function reviewReport(
 	adminId: string,
 	notes?: string,
 ) {
-	const report = await db.select().from(reports).where(eq(reports.id, reportId)).get();
+	const report = await db
+		.select()
+		.from(reports)
+		.where(eq(reports.id, reportId))
+		.then((rows) => rows[0]);
 
 	if (!report) {
 		throw new Error("Report not found");
@@ -352,33 +394,42 @@ export async function getDashboardStats() {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 
-	const totalUsers = await db.select({ count: sql<number>`count(*)` }).from(users).get();
-	const totalPosts = await db.select({ count: sql<number>`count(*)` }).from(posts).get();
-	const totalComments = await db.select({ count: sql<number>`count(*)` }).from(comments).get();
+	const totalUsers = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(users)
+		.then((rows) => rows[0]);
+	const totalPosts = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(posts)
+		.then((rows) => rows[0]);
+	const totalComments = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(comments)
+		.then((rows) => rows[0]);
 
 	const pendingReports = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(reports)
 		.where(eq(reports.status, "pending"))
-		.get();
+		.then((rows) => rows[0]);
 
 	const bannedUsers = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(users)
 		.where(sql`${users.bannedAt} IS NOT NULL`)
-		.get();
+		.then((rows) => rows[0]);
 
 	const newUsersToday = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(users)
 		.where(gte(users.createdAt, today))
-		.get();
+		.then((rows) => rows[0]);
 
 	const newPostsToday = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(posts)
 		.where(gte(posts.createdAt, today))
-		.get();
+		.then((rows) => rows[0]);
 
 	return {
 		totalUsers: totalUsers?.count || 0,
@@ -428,7 +479,7 @@ export async function getAuditLogs(
 				.select({ username: users.username })
 				.from(users)
 				.where(eq(users.id, log.adminId))
-				.get();
+				.then((rows) => rows[0]);
 
 			return {
 				...log,
@@ -437,7 +488,10 @@ export async function getAuditLogs(
 		}),
 	);
 
-	const totalResult = await db.select({ count: sql<number>`count(*)` }).from(auditLogs).get();
+	const totalResult = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(auditLogs)
+		.then((rows) => rows[0]);
 
 	return {
 		logs: logsWithUsernames,

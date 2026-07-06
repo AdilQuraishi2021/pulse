@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
 /**
- * Design tokens for Chirp UI with automatic dark/light theme support.
+ * Design tokens for Pulse UI with automatic dark/light theme support.
  * Uses stylex.types.color() with @media (prefers-color-scheme: dark) for
  * zero-JS automatic theme switching via CSS custom properties.
  */

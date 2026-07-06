@@ -18,7 +18,7 @@ async function getCommentLikeInfo(commentId: string, userId?: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(likes)
 		.where(eq(likes.commentId, commentId))
-		.get();
+		.then((rows) => rows[0]);
 
 	let isLiked = false;
 	if (userId) {
@@ -26,7 +26,7 @@ async function getCommentLikeInfo(commentId: string, userId?: string) {
 			.select()
 			.from(likes)
 			.where(and(eq(likes.commentId, commentId), eq(likes.userId, userId)))
-			.get();
+			.then((rows) => rows[0]);
 		isLiked = !!likeStatus;
 	}
 
@@ -42,7 +42,11 @@ export async function createComment(input: CreateCommentInput) {
 	}
 
 	// Verify post exists
-	const post = await db.select().from(posts).where(eq(posts.id, input.postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, input.postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -54,7 +58,7 @@ export async function createComment(input: CreateCommentInput) {
 			.select()
 			.from(comments)
 			.where(eq(comments.id, input.parentId))
-			.get();
+			.then((rows) => rows[0]);
 
 		if (!parentComment) {
 			throw new Error("Parent comment not found");
@@ -151,7 +155,11 @@ export async function getPostComments(postId: string, userId?: string) {
 }
 
 export async function deleteComment(commentId: string, userId: string) {
-	const comment = await db.select().from(comments).where(eq(comments.id, commentId)).get();
+	const comment = await db
+		.select()
+		.from(comments)
+		.where(eq(comments.id, commentId))
+		.then((rows) => rows[0]);
 
 	if (!comment) {
 		throw new Error("Comment not found");

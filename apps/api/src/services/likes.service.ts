@@ -7,7 +7,11 @@ const { likes, posts, comments } = schema;
 
 export async function togglePostLike(postId: string, userId: string) {
 	// Verify post exists
-	const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
+	const post = await db
+		.select()
+		.from(posts)
+		.where(eq(posts.id, postId))
+		.then((rows) => rows[0]);
 
 	if (!post) {
 		throw new Error("Post not found");
@@ -18,7 +22,7 @@ export async function togglePostLike(postId: string, userId: string) {
 		.select()
 		.from(likes)
 		.where(and(eq(likes.postId, postId), eq(likes.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingLike) {
 		// Unlike
@@ -46,7 +50,11 @@ export async function togglePostLike(postId: string, userId: string) {
 
 export async function toggleCommentLike(commentId: string, userId: string) {
 	// Verify comment exists
-	const comment = await db.select().from(comments).where(eq(comments.id, commentId)).get();
+	const comment = await db
+		.select()
+		.from(comments)
+		.where(eq(comments.id, commentId))
+		.then((rows) => rows[0]);
 
 	if (!comment) {
 		throw new Error("Comment not found");
@@ -57,7 +65,7 @@ export async function toggleCommentLike(commentId: string, userId: string) {
 		.select()
 		.from(likes)
 		.where(and(eq(likes.commentId, commentId), eq(likes.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (existingLike) {
 		// Unlike
@@ -88,7 +96,7 @@ export async function getPostLikeStatus(postId: string, userId: string) {
 		.select()
 		.from(likes)
 		.where(and(eq(likes.postId, postId), eq(likes.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { liked: !!like };
 }
@@ -98,7 +106,7 @@ export async function getCommentLikeStatus(commentId: string, userId: string) {
 		.select()
 		.from(likes)
 		.where(and(eq(likes.commentId, commentId), eq(likes.userId, userId)))
-		.get();
+		.then((rows) => rows[0]);
 
 	return { liked: !!like };
 }

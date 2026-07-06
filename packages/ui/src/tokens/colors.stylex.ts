@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
 /**
- * Color design tokens for Chirp UI
+ * Color design tokens for Pulse UI
  * Based on the Tailwind color palette used in the original design
  */
 export const colors = stylex.defineVars({

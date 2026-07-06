@@ -220,7 +220,7 @@ export function Header() {
 						<div {...stylex.props(styles.logoIcon, styles.logoIconHover)}>
 							<MessageCircle {...stylex.props(styles.iconWhite)} size={20} />
 						</div>
-						<span {...stylex.props(styles.logoText)}>Chirp</span>
+						<span {...stylex.props(styles.logoText)}>Pulse</span>
 					</Link>
 
 					{/* Navigation */}

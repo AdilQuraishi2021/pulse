@@ -84,7 +84,7 @@ test.describe("Admin Navigation - Comprehensive", () => {
 
 	test.describe("Header", () => {
 		test("should show app title", async ({ page }) => {
-			const title = page.getByRole("link", { name: /chirp|admin/i }).first();
+			const title = page.getByRole("link", { name: /pulse|admin/i }).first();
 			await expect(title).toBeVisible();
 		});
 
@@ -103,7 +103,7 @@ test.describe("Admin Navigation - Comprehensive", () => {
 		test("clicking logo should go to dashboard", async ({ page }) => {
 			await page.goto("/users", { waitUntil: "networkidle" });
 
-			const logo = page.getByRole("link", { name: /chirp|admin/i }).first();
+			const logo = page.getByRole("link", { name: /pulse|admin/i }).first();
 			await logo.click();
 			await waitForHydration(page);
 

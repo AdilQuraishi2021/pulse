@@ -45,7 +45,7 @@ export async function getUser(username: string, requesterId?: string) {
 		})
 		.from(users)
 		.where(eq(users.username, username))
-		.get();
+		.then((rows) => rows[0]);
 
 	if (!user) {
 		throw new Error("User not found");

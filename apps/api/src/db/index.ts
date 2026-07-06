@@ -1,11 +1,29 @@
+import "../env";
 import * as schema from "@chirp/db-schema";
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 
-export const client = createClient({
-	url: process.env.DATABASE_URL || "file:./chirp.db",
-});
+function getDatabaseConfig(): mysql.PoolOptions {
+	const rawUrl = process.env.DATABASE_URL;
+	if (!rawUrl) {
+		throw new Error("DATABASE_URL is required for the MySQL database");
+	}
 
-export const db = drizzle(client, { schema });
+	const normalizedUrl = rawUrl.replace(/^jdbc:/, "");
+	const url = new URL(normalizedUrl);
+
+	return {
+		host: url.hostname,
+		port: url.port ? Number(url.port) : 3306,
+		user: process.env.DATABASE_USERNAME || decodeURIComponent(url.username) || "root",
+		password: process.env.DATABASE_PASSWORD || decodeURIComponent(url.password),
+		database: url.pathname.replace(/^\//, ""),
+		connectionLimit: 10,
+	};
+}
+
+export const client = mysql.createPool(getDatabaseConfig());
+
+export const db = drizzle(client, { schema, mode: "default" });
 
 export { schema };

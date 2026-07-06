@@ -109,7 +109,7 @@ test.describe("Admin Dashboard - Comprehensive", () => {
 		});
 
 		test("should display app title or logo", async ({ page }) => {
-			const title = page.getByRole("link", { name: /chirp|admin/i }).first();
+			const title = page.getByRole("link", { name: /pulse|admin/i }).first();
 			await expect(title).toBeVisible();
 		});
 	});

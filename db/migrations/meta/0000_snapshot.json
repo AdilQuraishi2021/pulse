@@ -1,7 +1,7 @@
 {
-	"version": "6",
-	"dialect": "sqlite",
-	"id": "dce2be88-a6b3-45f0-9d0e-79b2aa1da86b",
+	"version": "5",
+	"dialect": "mysql",
+	"id": "b6786642-492a-4826-9177-7d8b914dd224",
 	"prevId": "00000000-0000-0000-0000-000000000000",
 	"tables": {
 		"audit_logs": {
@@ -9,35 +9,35 @@
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"admin_id": {
 					"name": "admin_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"action": {
 					"name": "action",
-					"type": "text",
+					"type": "varchar(255)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"target_type": {
 					"name": "target_type",
-					"type": "text",
+					"type": "enum('user','post','comment','report')",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"target_id": {
 					"name": "target_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
@@ -51,18 +51,18 @@
 				},
 				"ip_address": {
 					"name": "ip_address",
-					"type": "text",
+					"type": "varchar(45)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
 			"indexes": {},
@@ -77,50 +77,49 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
+			"compositePrimaryKeys": {
+				"audit_logs_id": {
+					"name": "audit_logs_id",
+					"columns": ["id"]
+				}
+			},
 			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		},
 		"bookmarks": {
 			"name": "bookmarks",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"user_id": {
 					"name": "user_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"post_id": {
 					"name": "post_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
-			"indexes": {
-				"bookmarks_user_id_post_id_unique": {
-					"name": "bookmarks_user_id_post_id_unique",
-					"columns": ["user_id", "post_id"],
-					"isUnique": true
-				}
-			},
+			"indexes": {},
 			"foreignKeys": {
 				"bookmarks_user_id_users_id_fk": {
 					"name": "bookmarks_user_id_users_id_fk",
@@ -141,17 +140,27 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"compositePrimaryKeys": {
+				"bookmarks_id": {
+					"name": "bookmarks_id",
+					"columns": ["id"]
+				}
+			},
+			"uniqueConstraints": {
+				"bookmarks_user_id_post_id_unique": {
+					"name": "bookmarks_user_id_post_id_unique",
+					"columns": ["user_id", "post_id"]
+				}
+			},
+			"checkConstraint": {}
 		},
 		"comments": {
 			"name": "comments",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
@@ -164,32 +173,32 @@
 				},
 				"post_id": {
 					"name": "post_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"author_id": {
 					"name": "author_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"parent_id": {
 					"name": "parent_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
 			"indexes": {},
@@ -222,50 +231,49 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
+			"compositePrimaryKeys": {
+				"comments_id": {
+					"name": "comments_id",
+					"columns": ["id"]
+				}
+			},
 			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		},
 		"follows": {
 			"name": "follows",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"follower_id": {
 					"name": "follower_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"following_id": {
 					"name": "following_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
-			"indexes": {
-				"follows_follower_id_following_id_unique": {
-					"name": "follows_follower_id_following_id_unique",
-					"columns": ["follower_id", "following_id"],
-					"isUnique": true
-				}
-			},
+			"indexes": {},
 			"foreignKeys": {
 				"follows_follower_id_users_id_fk": {
 					"name": "follows_follower_id_users_id_fk",
@@ -286,62 +294,61 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"compositePrimaryKeys": {
+				"follows_id": {
+					"name": "follows_id",
+					"columns": ["id"]
+				}
+			},
+			"uniqueConstraints": {
+				"follows_follower_id_following_id_unique": {
+					"name": "follows_follower_id_following_id_unique",
+					"columns": ["follower_id", "following_id"]
+				}
+			},
+			"checkConstraint": {}
 		},
 		"likes": {
 			"name": "likes",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"user_id": {
 					"name": "user_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"post_id": {
 					"name": "post_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"comment_id": {
 					"name": "comment_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
-			"indexes": {
-				"likes_user_id_post_id_unique": {
-					"name": "likes_user_id_post_id_unique",
-					"columns": ["user_id", "post_id"],
-					"isUnique": true
-				},
-				"likes_user_id_comment_id_unique": {
-					"name": "likes_user_id_comment_id_unique",
-					"columns": ["user_id", "comment_id"],
-					"isUnique": true
-				}
-			},
+			"indexes": {},
 			"foreignKeys": {
 				"likes_user_id_users_id_fk": {
 					"name": "likes_user_id_users_id_fk",
@@ -371,58 +378,72 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"compositePrimaryKeys": {
+				"likes_id": {
+					"name": "likes_id",
+					"columns": ["id"]
+				}
+			},
+			"uniqueConstraints": {
+				"likes_user_id_post_id_unique": {
+					"name": "likes_user_id_post_id_unique",
+					"columns": ["user_id", "post_id"]
+				},
+				"likes_user_id_comment_id_unique": {
+					"name": "likes_user_id_comment_id_unique",
+					"columns": ["user_id", "comment_id"]
+				}
+			},
+			"checkConstraint": {}
 		},
 		"notifications": {
 			"name": "notifications",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"user_id": {
 					"name": "user_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"type": {
 					"name": "type",
-					"type": "text",
+					"type": "varchar(64)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"actor_id": {
 					"name": "actor_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"post_id": {
 					"name": "post_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"comment_id": {
 					"name": "comment_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"read": {
 					"name": "read",
-					"type": "integer",
+					"type": "boolean",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
@@ -430,11 +451,11 @@
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
 			"indexes": {},
@@ -476,17 +497,22 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
+			"compositePrimaryKeys": {
+				"notifications_id": {
+					"name": "notifications_id",
+					"columns": ["id"]
+				}
+			},
 			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		},
 		"posts": {
 			"name": "posts",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
@@ -499,26 +525,26 @@
 				},
 				"author_id": {
 					"name": "author_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				},
 				"updated_at": {
 					"name": "updated_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
 			"indexes": {},
@@ -533,44 +559,49 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
+			"compositePrimaryKeys": {
+				"posts_id": {
+					"name": "posts_id",
+					"columns": ["id"]
+				}
+			},
 			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		},
 		"reports": {
 			"name": "reports",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"reporter_id": {
 					"name": "reporter_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"target_type": {
 					"name": "target_type",
-					"type": "text",
+					"type": "enum('post','comment','user')",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"target_id": {
 					"name": "target_id",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"reason": {
 					"name": "reason",
-					"type": "text",
+					"type": "varchar(255)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
@@ -584,7 +615,7 @@
 				},
 				"status": {
 					"name": "status",
-					"type": "text",
+					"type": "enum('pending','reviewed','actioned','dismissed')",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
@@ -592,25 +623,25 @@
 				},
 				"reviewed_by": {
 					"name": "reviewed_by",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"reviewed_at": {
 					"name": "reviewed_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
 			"indexes": {},
@@ -634,37 +665,42 @@
 					"onUpdate": "no action"
 				}
 			},
-			"compositePrimaryKeys": {},
+			"compositePrimaryKeys": {
+				"reports_id": {
+					"name": "reports_id",
+					"columns": ["id"]
+				}
+			},
 			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		},
 		"users": {
 			"name": "users",
 			"columns": {
 				"id": {
 					"name": "id",
-					"type": "text",
-					"primaryKey": true,
+					"type": "varchar(191)",
+					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"email": {
 					"name": "email",
-					"type": "text",
+					"type": "varchar(255)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"username": {
 					"name": "username",
-					"type": "text",
+					"type": "varchar(64)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
 				},
 				"display_name": {
 					"name": "display_name",
-					"type": "text",
+					"type": "varchar(255)",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false
@@ -692,7 +728,7 @@
 				},
 				"role": {
 					"name": "role",
-					"type": "text",
+					"type": "enum('user','admin','moderator')",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
@@ -700,7 +736,7 @@
 				},
 				"banned_at": {
 					"name": "banned_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
@@ -714,54 +750,57 @@
 				},
 				"banned_by": {
 					"name": "banned_by",
-					"type": "text",
+					"type": "varchar(191)",
 					"primaryKey": false,
 					"notNull": false,
 					"autoincrement": false
 				},
 				"created_at": {
 					"name": "created_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				},
 				"updated_at": {
 					"name": "updated_at",
-					"type": "integer",
+					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": true,
 					"autoincrement": false,
-					"default": "(unixepoch())"
+					"default": "(now())"
 				}
 			},
-			"indexes": {
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {
+				"users_id": {
+					"name": "users_id",
+					"columns": ["id"]
+				}
+			},
+			"uniqueConstraints": {
 				"users_email_unique": {
 					"name": "users_email_unique",
-					"columns": ["email"],
-					"isUnique": true
+					"columns": ["email"]
 				},
 				"users_username_unique": {
 					"name": "users_username_unique",
-					"columns": ["username"],
-					"isUnique": true
+					"columns": ["username"]
 				}
 			},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"checkConstraints": {}
+			"checkConstraint": {}
 		}
 	},
 	"views": {},
-	"enums": {},
 	"_meta": {
 		"schemas": {},
 		"tables": {},
 		"columns": {}
 	},
 	"internal": {
+		"tables": {},
 		"indexes": {}
 	}
 }
