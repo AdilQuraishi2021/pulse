@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { AlertCircle, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { type AiPostType, improvePostWithAi } from "../../server/functions/ai";
 import { createPost } from "../../server/functions/posts";
 import {
@@ -224,6 +225,7 @@ export function PostForm({ onSuccess }: { onSuccess?: () => void }) {
 			setContent("");
 			setHistory([]);
 			setShowAiOptions(false);
+			broadcastLiveActivity();
 			onSuccess?.();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create post");

@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { getUnreadCount } from "../../server/functions/notifications";
 import { colors, radii, spacing } from "../../tokens.stylex";
 
@@ -68,10 +69,9 @@ export function NotificationBell({ isActive }: NotificationBellProps) {
 
 	useEffect(() => {
 		loadUnreadCount();
-		// Poll for new notifications every 30 seconds
-		const interval = setInterval(loadUnreadCount, 30000);
-		return () => clearInterval(interval);
 	}, [loadUnreadCount]);
+
+	useLiveRefresh(loadUnreadCount, { intervalMs: 5000 });
 
 	return (
 		<div {...stylex.props(styles.bellContainer)}>

@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { AlertCircle, Send } from "lucide-react";
 import { useState } from "react";
+import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { createComment } from "../../server/functions/comments";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
 
@@ -137,6 +138,7 @@ export function CommentForm({
 		try {
 			await createComment({ data: { postId, content, parentId } });
 			setContent("");
+			broadcastLiveActivity();
 			onSuccess?.();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to add comment");

@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 import { Edit, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { togglePostLike } from "../../server/functions/likes";
 import { deletePost } from "../../server/functions/posts";
 import {
@@ -250,6 +251,7 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 				setAnimateLike(true);
 				setTimeout(() => setAnimateLike(false), 400);
 			}
+			broadcastLiveActivity();
 		} catch (error) {
 			console.error("Failed to like post:", error);
 		} finally {
@@ -263,6 +265,7 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 		setLoading(true);
 		try {
 			await deletePost({ data: post.id });
+			broadcastLiveActivity();
 			onDelete?.();
 		} catch (error) {
 			console.error("Failed to delete post:", error);

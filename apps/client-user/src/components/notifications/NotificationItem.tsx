@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { deleteNotification, markAsRead } from "../../server/functions/notifications";
 import { colors, radii, spacing } from "../../tokens.stylex";
 import { RelativeTime } from "../shared/RelativeTime";
@@ -13,7 +14,6 @@ const styles = stylex.create({
 		gap: spacing.md,
 		padding: spacing.md,
 		transition: "background-color 0.2s",
-		cursor: "pointer",
 		borderBottomWidth: "1px",
 		borderBottomStyle: "solid",
 		borderBottomColor: colors.gray100,
@@ -26,6 +26,17 @@ const styles = stylex.create({
 		":hover": {
 			backgroundColor: colors.blue100,
 		},
+	},
+	itemMain: {
+		display: "flex",
+		flex: 1,
+		gap: spacing.md,
+		minWidth: 0,
+		padding: 0,
+		backgroundColor: "transparent",
+		border: "none",
+		cursor: "pointer",
+		textAlign: "left",
 	},
 	iconContainer: {
 		width: "40px",
@@ -162,6 +173,7 @@ export function NotificationItem({ notification, onRead, onDelete }: Notificatio
 		if (!notification.read) {
 			try {
 				await markAsRead({ data: notification.id });
+				broadcastLiveActivity();
 				onRead?.();
 			} catch (error) {
 				console.error("Failed to mark as read:", error);
@@ -183,6 +195,7 @@ export function NotificationItem({ notification, onRead, onDelete }: Notificatio
 		setLoading(true);
 		try {
 			await deleteNotification({ data: notification.id });
+			broadcastLiveActivity();
 			onDelete?.();
 		} catch (error) {
 			console.error("Failed to delete notification:", error);
@@ -194,38 +207,34 @@ export function NotificationItem({ notification, onRead, onDelete }: Notificatio
 	const preview = getPreview();
 
 	return (
-		<div
-			{...stylex.props(styles.item, !notification.read && styles.itemUnread)}
-			onClick={handleClick}
-			onKeyDown={(e) => e.key === "Enter" && handleClick()}
-			role="button"
-			tabIndex={0}
-		>
-			<div {...stylex.props(styles.avatarWrapper)}>
-				{notification.actor && (
-					<UserAvatar
-						avatarUrl={notification.actor.avatarUrl}
-						username={notification.actor.username}
-						size="sm"
-					/>
-				)}
-			</div>
-
-			<div {...stylex.props(styles.content)}>
-				<div {...stylex.props(styles.textRow)}>
-					<span {...stylex.props(styles.actorName)}>
-						{notification.actor?.displayName || "Someone"}
-					</span>
-					<span {...stylex.props(styles.message)}>{getMessage()}</span>
+		<div {...stylex.props(styles.item, !notification.read && styles.itemUnread)}>
+			<button type="button" onClick={handleClick} {...stylex.props(styles.itemMain)}>
+				<div {...stylex.props(styles.avatarWrapper)}>
+					{notification.actor && (
+						<UserAvatar
+							avatarUrl={notification.actor.avatarUrl}
+							username={notification.actor.username}
+							size="sm"
+						/>
+					)}
 				</div>
 
-				{preview && <p {...stylex.props(styles.preview)}>"{preview}"</p>}
+				<div {...stylex.props(styles.content)}>
+					<div {...stylex.props(styles.textRow)}>
+						<span {...stylex.props(styles.actorName)}>
+							{notification.actor?.displayName || "Someone"}
+						</span>
+						<span {...stylex.props(styles.message)}>{getMessage()}</span>
+					</div>
 
-				<div {...stylex.props(styles.meta)}>
-					<RelativeTime date={notification.createdAt} />
-					{!notification.read && <span {...stylex.props(styles.unreadDot)} />}
+					{preview && <p {...stylex.props(styles.preview)}>"{preview}"</p>}
+
+					<div {...stylex.props(styles.meta)}>
+						<RelativeTime date={notification.createdAt} />
+						{!notification.read && <span {...stylex.props(styles.unreadDot)} />}
+					</div>
 				</div>
-			</div>
+			</button>
 
 			<button
 				type="button"

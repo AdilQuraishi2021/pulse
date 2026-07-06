@@ -6,6 +6,7 @@ import { CommentCard } from "../../components/comments/CommentCard";
 import { CommentForm } from "../../components/comments/CommentForm";
 import { PostCard } from "../../components/posts/PostCard";
 import { LoadingSpinner } from "../../components/shared/LoadingSpinner";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { getCurrentUser } from "../../server/functions/auth";
 import { getPostComments } from "../../server/functions/comments";
 import { getPost } from "../../server/functions/posts";
@@ -272,29 +273,36 @@ function PostPage() {
 	const [user, setUser] = useState<{ id: string } | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	const loadData = useCallback(async () => {
-		try {
-			setLoading(true);
-			const [currentUser, postData, commentsData] = await Promise.all([
-				getCurrentUser(),
-				getPost({ data: postId }),
-				getPostComments({ data: postId }),
-			]);
-			setUser(currentUser);
-			setPost(postData as DetailPost);
-			setComments(commentsData as DetailComment[]);
-		} catch (error) {
-			console.error("Failed to load post:", error);
-			setPost(null);
-			setComments([]);
-		} finally {
-			setLoading(false);
-		}
-	}, [postId]);
+	const loadData = useCallback(
+		async (options: { silent?: boolean } = {}) => {
+			try {
+				if (!options.silent) {
+					setLoading(true);
+				}
+				const [currentUser, postData, commentsData] = await Promise.all([
+					getCurrentUser(),
+					getPost({ data: postId }),
+					getPostComments({ data: postId }),
+				]);
+				setUser(currentUser);
+				setPost(postData as DetailPost);
+				setComments(commentsData as DetailComment[]);
+			} catch (error) {
+				console.error("Failed to load post:", error);
+				setPost(null);
+				setComments([]);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[postId],
+	);
 
 	useEffect(() => {
 		loadData();
 	}, [loadData]);
+
+	useLiveRefresh(() => loadData({ silent: true }), { intervalMs: 5000, enabled: Boolean(post) });
 
 	if (loading) {
 		return (

@@ -1,8 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, CheckCheck, Inbox } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NotificationItem } from "../components/notifications/NotificationItem";
+import { broadcastLiveActivity, useLiveRefresh } from "../hooks/useLiveRefresh";
 import { getCurrentUser } from "../server/functions/auth";
 import { getNotifications, markAllAsRead } from "../server/functions/notifications";
 import { colors, radii, semanticColors, shadows, spacing } from "../tokens.stylex";
@@ -128,18 +129,38 @@ export const Route = createFileRoute("/notifications")({
 	component: NotificationsPage,
 });
 
+type NotificationPageUser = {
+	id: string;
+};
+
+type NotificationListItem = {
+	id: string;
+	type: string;
+	read: boolean;
+	actor?: {
+		id: string;
+		username: string;
+		displayName: string;
+		avatarUrl?: string;
+	};
+	postId?: string;
+	commentId?: string;
+	postContent?: string;
+	commentContent?: string;
+	createdAt: Date;
+};
+
 function NotificationsPage() {
-	const [notifications, setNotifications] = useState<any[]>([]);
-	const [user, setUser] = useState<any>(null);
+	const [notifications, setNotifications] = useState<NotificationListItem[]>([]);
+	const [user, setUser] = useState<NotificationPageUser | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [markingAll, setMarkingAll] = useState(false);
 
-	useEffect(() => {
-		loadData();
-	}, []);
-
-	const loadData = async () => {
+	const loadData = useCallback(async (options: { silent?: boolean } = {}) => {
 		try {
+			if (!options.silent) {
+				setLoading(true);
+			}
 			const currentUser = await getCurrentUser();
 			setUser(currentUser);
 
@@ -152,7 +173,13 @@ function NotificationsPage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadData();
+	}, [loadData]);
+
+	useLiveRefresh(() => loadData({ silent: true }), { intervalMs: 5000, enabled: Boolean(user) });
 
 	const handleMarkAllAsRead = async () => {
 		if (markingAll) return;
@@ -162,6 +189,7 @@ function NotificationsPage() {
 			await markAllAsRead();
 			// Update local state
 			setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+			broadcastLiveActivity();
 		} catch (error) {
 			console.error("Failed to mark all as read:", error);
 		} finally {

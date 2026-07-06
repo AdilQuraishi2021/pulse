@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FeedSelector } from "../components/feed/FeedSelector";
 import { PostForm } from "../components/posts/PostForm";
 import { type Post, PostList } from "../components/posts/PostList";
+import { useLiveRefresh } from "../hooks/useLiveRefresh";
 import { getCurrentUser } from "../server/functions/auth";
 import { type FeedMode, getRankedFeed } from "../server/functions/feed";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../tokens.stylex";
@@ -128,25 +129,32 @@ function HomePage() {
 	const [feedMode, setFeedMode] = useState<FeedMode>("recommended");
 	const [feedFilter, setFeedFilter] = useState("");
 
-	const loadData = useCallback(async () => {
-		try {
-			setLoading(true);
-			const [currentUser, feedPosts] = await Promise.all([
-				getCurrentUser(),
-				getRankedFeed({ data: { type: feedMode, filter: feedFilter } }),
-			]);
-			setUser(currentUser);
-			setPosts(feedPosts);
-		} catch (error) {
-			console.error("Failed to load data:", error);
-		} finally {
-			setLoading(false);
-		}
-	}, [feedMode, feedFilter]);
+	const loadData = useCallback(
+		async (options: { silent?: boolean } = {}) => {
+			try {
+				if (!options.silent) {
+					setLoading(true);
+				}
+				const [currentUser, feedPosts] = await Promise.all([
+					getCurrentUser(),
+					getRankedFeed({ data: { type: feedMode, filter: feedFilter } }),
+				]);
+				setUser(currentUser);
+				setPosts(feedPosts);
+			} catch (error) {
+				console.error("Failed to load data:", error);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[feedMode, feedFilter],
+	);
 
 	useEffect(() => {
 		loadData();
 	}, [loadData]);
+
+	useLiveRefresh(() => loadData({ silent: true }), { intervalMs: 7000, enabled: Boolean(user) });
 
 	if (!user && !loading) {
 		return (

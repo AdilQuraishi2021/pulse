@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 import { Heart, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { deleteComment } from "../../server/functions/comments";
 import { toggleCommentLike } from "../../server/functions/likes";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
@@ -185,6 +186,7 @@ export function CommentCard({ comment, currentUserId, onDelete }: CommentCardPro
 				setAnimateLike(true);
 				setTimeout(() => setAnimateLike(false), 400);
 			}
+			broadcastLiveActivity();
 		} catch (error) {
 			console.error("Failed to like comment:", error);
 		} finally {
@@ -198,6 +200,7 @@ export function CommentCard({ comment, currentUserId, onDelete }: CommentCardPro
 		setLoading(true);
 		try {
 			await deleteComment({ data: comment.id });
+			broadcastLiveActivity();
 			onDelete?.();
 		} catch (error) {
 			console.error("Failed to delete comment:", error);
