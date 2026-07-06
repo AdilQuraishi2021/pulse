@@ -66,8 +66,8 @@ After running the seed script:
 - **Follow System** - Follow/unfollow users, follower/following counts
 
 #### Feed & Discovery
-- **Home Feed** - Posts from followed users
-- **Explore Feed** - All recent posts
+- **Home Feed** - Ranked personal feed with latest, trending, friends, recommended, topic, industry, community, and nearby modes
+- **Explore Feed** - Public discovery feed with the same ranking controls
 - **Search** - Find posts by content, users by name/username
 
 #### Engagement Features

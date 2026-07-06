@@ -63,7 +63,7 @@ const styles = stylex.create({
 	},
 });
 
-interface Post {
+export interface Post {
 	id: string;
 	content: string;
 	createdAt: Date;

@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
-import { useEffect, useState } from "react";
-import { PostList } from "../components/posts/PostList";
+import { useCallback, useEffect, useState } from "react";
+import { FeedSelector } from "../components/feed/FeedSelector";
+import { type Post, PostList } from "../components/posts/PostList";
 import { getCurrentUser } from "../server/functions/auth";
-import { getExploreFeed } from "../server/functions/feed";
+import { type FeedMode, getRankedFeed } from "../server/functions/feed";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../tokens.stylex";
 
 export const Route = createFileRoute("/explore")({
@@ -58,19 +59,18 @@ const styles = stylex.create({
 });
 
 function ExplorePage() {
-	const [posts, setPosts] = useState<any[]>([]);
-	const [user, setUser] = useState<any>(null);
+	const [posts, setPosts] = useState<Post[]>([]);
+	const [user, setUser] = useState<{ id: string } | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [feedMode, setFeedMode] = useState<FeedMode>("latest");
+	const [feedFilter, setFeedFilter] = useState("");
 
-	useEffect(() => {
-		loadData();
-	}, []);
-
-	const loadData = async () => {
+	const loadData = useCallback(async () => {
 		try {
+			setLoading(true);
 			const [currentUser, feedPosts] = await Promise.all([
 				getCurrentUser(),
-				getExploreFeed({ data: {} }),
+				getRankedFeed({ data: { type: feedMode, filter: feedFilter } }),
 			]);
 			setUser(currentUser);
 			setPosts(feedPosts);
@@ -79,7 +79,11 @@ function ExplorePage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [feedMode, feedFilter]);
+
+	useEffect(() => {
+		loadData();
+	}, [loadData]);
 
 	return (
 		<div {...stylex.props(styles.container)}>
@@ -93,6 +97,13 @@ function ExplorePage() {
 					<p {...stylex.props(styles.pageSubtitle)}>Discover new posts from everyone</p>
 				</div>
 			</div>
+
+			<FeedSelector
+				value={feedMode}
+				filter={feedFilter}
+				onChange={setFeedMode}
+				onFilterChange={setFeedFilter}
+			/>
 
 			{/* Posts */}
 			<div {...stylex.props(styles.postsList)}>

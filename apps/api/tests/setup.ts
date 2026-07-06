@@ -131,7 +131,10 @@ vi.mock("../src/db", async () => {
 
 // Clean up database before each test
 beforeEach(async (context) => {
-	if (context.task.file.name.endsWith("ai.service.test.ts")) {
+	if (
+		context.task.file.name.endsWith("ai.service.test.ts") ||
+		context.task.file.name.endsWith("feed-ranking.test.ts")
+	) {
 		return;
 	}
 

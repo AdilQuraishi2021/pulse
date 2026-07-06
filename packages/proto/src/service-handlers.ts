@@ -49,6 +49,7 @@ import type {
 	GetPostCommentsRequest,
 	GetPostRequest,
 	GetPostsRequest,
+	GetRankedFeedRequest,
 	GetReportRequest,
 	GetUnreadCountRequest,
 	GetUnreadCountResponse,
@@ -155,6 +156,7 @@ export interface IFollowsService {
 export interface IFeedService {
 	getHomeFeed(request: GetHomeFeedRequest): Promise<PostsResponse>;
 	getExploreFeed(request: GetExploreFeedRequest): Promise<PostsResponse>;
+	getRankedFeed(request: GetRankedFeedRequest): Promise<PostsResponse>;
 }
 
 // Search Service Handler

@@ -2,10 +2,11 @@ import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { FeedSelector } from "../components/feed/FeedSelector";
 import { PostForm } from "../components/posts/PostForm";
-import { PostList } from "../components/posts/PostList";
+import { type Post, PostList } from "../components/posts/PostList";
 import { getCurrentUser } from "../server/functions/auth";
-import { getHomeFeed } from "../server/functions/feed";
+import { type FeedMode, getRankedFeed } from "../server/functions/feed";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../tokens.stylex";
 
 export const Route = createFileRoute("/")({
@@ -121,15 +122,18 @@ const styles = stylex.create({
 });
 
 function HomePage() {
-	const [posts, setPosts] = useState<any[]>([]);
-	const [user, setUser] = useState<any>(null);
+	const [posts, setPosts] = useState<Post[]>([]);
+	const [user, setUser] = useState<{ id: string } | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [feedMode, setFeedMode] = useState<FeedMode>("recommended");
+	const [feedFilter, setFeedFilter] = useState("");
 
 	const loadData = useCallback(async () => {
 		try {
+			setLoading(true);
 			const [currentUser, feedPosts] = await Promise.all([
 				getCurrentUser(),
-				getHomeFeed({ data: {} }),
+				getRankedFeed({ data: { type: feedMode, filter: feedFilter } }),
 			]);
 			setUser(currentUser);
 			setPosts(feedPosts);
@@ -138,7 +142,7 @@ function HomePage() {
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [feedMode, feedFilter]);
 
 	useEffect(() => {
 		loadData();
@@ -182,6 +186,13 @@ function HomePage() {
 					<PostForm onSuccess={loadData} />
 				</div>
 			)}
+
+			<FeedSelector
+				value={feedMode}
+				filter={feedFilter}
+				onChange={setFeedMode}
+				onFilterChange={setFeedFilter}
+			/>
 
 			{/* Posts */}
 			<div {...stylex.props(styles.postsList)}>

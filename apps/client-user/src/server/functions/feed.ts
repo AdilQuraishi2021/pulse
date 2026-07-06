@@ -1,4 +1,4 @@
-import type { PostResponse } from "@chirp/proto";
+import { type PostResponse, FeedType as ProtoFeedType } from "@chirp/proto";
 import { createServerFn } from "@tanstack/react-start";
 import {
 	fromProtoTimestamp,
@@ -13,19 +13,38 @@ function mapPostResponse(post: PostResponse) {
 		content: post.content,
 		createdAt: fromProtoTimestamp(post.createdAt),
 		updatedAt: fromProtoTimestamp(post.updatedAt),
-		author: post.author
-			? {
-					id: post.author.id,
-					username: post.author.username,
-					displayName: post.author.displayName,
-					avatarUrl: post.author.avatarUrl,
-				}
-			: null,
+		author: {
+			id: post.author?.id || "",
+			username: post.author?.username || "",
+			displayName: post.author?.displayName || "",
+			avatarUrl: post.author?.avatarUrl,
+		},
 		likeCount: post.likeCount,
 		commentCount: post.commentCount,
 		isLiked: post.isLiked,
 	};
 }
+
+export type FeedMode =
+	| "latest"
+	| "trending"
+	| "friends"
+	| "recommended"
+	| "industry"
+	| "topic"
+	| "community"
+	| "nearby";
+
+const protoFeedTypes: Record<FeedMode, ProtoFeedType> = {
+	latest: ProtoFeedType.LATEST,
+	trending: ProtoFeedType.TRENDING,
+	friends: ProtoFeedType.FRIENDS,
+	recommended: ProtoFeedType.RECOMMENDED,
+	industry: ProtoFeedType.INDUSTRY,
+	topic: ProtoFeedType.TOPIC,
+	community: ProtoFeedType.COMMUNITY,
+	nearby: ProtoFeedType.NEARBY,
+};
 
 export const getHomeFeed = createServerFn()
 	.inputValidator((d?: { limit?: number; offset?: number }) => d)
@@ -39,6 +58,25 @@ export const getHomeFeed = createServerFn()
 				limit: options?.limit || 20,
 				offset: options?.offset || 0,
 			},
+		});
+
+		return response.posts.map(mapPostResponse);
+	});
+
+export const getRankedFeed = createServerFn()
+	.inputValidator((d?: { limit?: number; offset?: number; type?: FeedMode; filter?: string }) => d)
+	.handler(async ({ data: options }) => {
+		const sessionToken = await getGrpcSessionToken();
+		const client = getGrpcClient();
+
+		const { response } = await client.feed.getRankedFeed({
+			sessionToken: sessionToken || "",
+			pagination: {
+				limit: options?.limit || 20,
+				offset: options?.offset || 0,
+			},
+			type: protoFeedTypes[options?.type || "latest"],
+			filter: options?.filter?.trim() || undefined,
 		});
 
 		return response.posts.map(mapPostResponse);

@@ -7,6 +7,18 @@ import "posts.proto";
 service FeedService {
   rpc GetHomeFeed(GetHomeFeedRequest) returns (chirp.posts.PostsResponse);
   rpc GetExploreFeed(GetExploreFeedRequest) returns (chirp.posts.PostsResponse);
+  rpc GetRankedFeed(GetRankedFeedRequest) returns (chirp.posts.PostsResponse);
+}
+
+enum FeedType {
+  FEED_TYPE_LATEST = 0;
+  FEED_TYPE_TRENDING = 1;
+  FEED_TYPE_FRIENDS = 2;
+  FEED_TYPE_RECOMMENDED = 3;
+  FEED_TYPE_INDUSTRY = 4;
+  FEED_TYPE_TOPIC = 5;
+  FEED_TYPE_COMMUNITY = 6;
+  FEED_TYPE_NEARBY = 7;
 }
 
 message GetHomeFeedRequest {
@@ -17,4 +29,11 @@ message GetHomeFeedRequest {
 message GetExploreFeedRequest {
   chirp.common.PaginationRequest pagination = 1;
   optional string session_token = 2;
+}
+
+message GetRankedFeedRequest {
+  optional string session_token = 1;
+  chirp.common.PaginationRequest pagination = 2;
+  FeedType type = 3;
+  optional string filter = 4;
 }
