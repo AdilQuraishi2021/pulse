@@ -1,7 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Clock, Eye, FileText, MessageSquare, User, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAdminAccess } from "../../lib/auth-guard";
+import { listAdminReports, reviewAdminReport } from "../../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
 
 const styles = stylex.create({
@@ -204,6 +206,11 @@ const styles = stylex.create({
 			backgroundColor: colors.slate600,
 		},
 	},
+	emptyState: {
+		textAlign: "center",
+		color: semanticColors.textTertiary,
+		paddingBlock: spacing.xl,
+	},
 });
 
 export const Route = createFileRoute("/reports/")({
@@ -211,49 +218,64 @@ export const Route = createFileRoute("/reports/")({
 	component: ReportsPage,
 });
 
-const mockReports: {
+interface AdminReport {
 	id: string;
 	targetType: "post" | "comment" | "user";
 	targetId: string;
-	targetContent: string;
 	reason: string;
+	description: string | null;
 	reporterUsername: string;
-	status: "pending" | "resolved";
+	status: "pending" | "reviewed" | "actioned" | "dismissed";
 	createdAt: string;
-}[] = [
-	{
-		id: "rpt-001",
-		targetType: "post",
-		targetId: "post-1",
-		targetContent: "This post contains inappropriate language and violates community guidelines.",
-		reason: "Spam or misleading content",
-		reporterUsername: "bob",
-		status: "pending",
-		createdAt: "2 hours ago",
-	},
-	{
-		id: "rpt-002",
-		targetType: "comment",
-		targetId: "post-2",
-		targetContent: "Offensive comment targeting another user.",
-		reason: "Harassment or bullying",
-		reporterUsername: "charlie",
-		status: "pending",
-		createdAt: "5 hours ago",
-	},
-	{
-		id: "rpt-003",
-		targetType: "user",
-		targetId: "user-3",
-		targetContent: "Suspicious account with automated posting behavior.",
-		reason: "Fake account or bot",
-		reporterUsername: "diana",
-		status: "resolved",
-		createdAt: "1 day ago",
-	},
-];
+}
 
 function ReportsPage() {
+	const [reports, setReports] = useState<AdminReport[]>([]);
+	const [statusFilter, setStatusFilter] = useState("pending");
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadReports = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const response = await listAdminReports({ data: { statusFilter } });
+			setReports(response.reports);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load reports");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [statusFilter]);
+
+	useEffect(() => {
+		loadReports();
+	}, [loadReports]);
+
+	const counts = useMemo(
+		() => ({
+			pending: reports.filter((report) => report.status === "pending").length,
+		}),
+		[reports],
+	);
+
+	const handleReview = async (
+		reportId: string,
+		action: "dismiss" | "warn" | "remove_content" | "ban_user",
+	) => {
+		const notes =
+			action === "dismiss"
+				? "Dismissed from admin dashboard"
+				: window.prompt("Moderation notes", "Reviewed from admin dashboard");
+		if (!notes) return;
+		try {
+			await reviewAdminReport({ data: { reportId, action, notes } });
+			await loadReports();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to review report");
+		}
+	};
+
 	const getTargetIcon = (type: string) => {
 		switch (type) {
 			case "post":
@@ -279,6 +301,8 @@ function ReportsPage() {
 	const getStatusStyle = (status: string) => {
 		switch (status) {
 			case "resolved":
+			case "actioned":
+			case "reviewed":
 				return styles.statusResolved;
 			case "dismissed":
 				return styles.statusDismissed;
@@ -303,98 +327,132 @@ function ReportsPage() {
 			<header {...stylex.props(styles.header)}>
 				<h1 {...stylex.props(styles.title)}>Reports</h1>
 				<div {...stylex.props(styles.tabs)}>
-					<button type="button" {...stylex.props(styles.tab, styles.tabActive)}>
-						Pending (0)
+					<button
+						type="button"
+						onClick={() => setStatusFilter("pending")}
+						{...stylex.props(styles.tab, statusFilter === "pending" && styles.tabActive)}
+					>
+						Pending ({counts.pending})
 					</button>
-					<button type="button" {...stylex.props(styles.tab)}>
-						Resolved
+					<button
+						type="button"
+						onClick={() => setStatusFilter("actioned")}
+						{...stylex.props(styles.tab, statusFilter === "actioned" && styles.tabActive)}
+					>
+						Actioned
 					</button>
-					<button type="button" {...stylex.props(styles.tab)}>
+					<button
+						type="button"
+						onClick={() => setStatusFilter("dismissed")}
+						{...stylex.props(styles.tab, statusFilter === "dismissed" && styles.tabActive)}
+					>
 						Dismissed
 					</button>
-					<button type="button" {...stylex.props(styles.tab)}>
+					<button
+						type="button"
+						onClick={() => setStatusFilter("all")}
+						{...stylex.props(styles.tab, statusFilter === "all" && styles.tabActive)}
+					>
 						All
 					</button>
 				</div>
 			</header>
 
 			<div {...stylex.props(styles.reportsList)}>
-				{mockReports.map((report) => {
-					const TargetIcon = getTargetIcon(report.targetType);
-					const targetLink = getTargetLink(report.targetType, report.targetId);
+				{error && <p {...stylex.props(styles.emptyState)}>{error}</p>}
+				{isLoading ? (
+					<p {...stylex.props(styles.emptyState)}>Loading reports...</p>
+				) : reports.length === 0 ? (
+					<p {...stylex.props(styles.emptyState)}>No reports found.</p>
+				) : (
+					reports.map((report) => {
+						const TargetIcon = getTargetIcon(report.targetType);
+						const targetLink = getTargetLink(report.targetType, report.targetId);
 
-					return (
-						<article key={report.id} {...stylex.props(styles.reportCard)}>
-							<div {...stylex.props(styles.reportHeader)}>
-								<div {...stylex.props(styles.reportInfo)}>
-									<span
-										{...stylex.props(styles.reportBadge, getTargetBadgeStyle(report.targetType))}
-									>
-										<TargetIcon size={12} />
-										{report.targetType}
-									</span>
-									<span {...stylex.props(styles.reportId)}>Report #{report.id}</span>
-								</div>
-								<div {...stylex.props(styles.reportStatus, getStatusStyle(report.status))}>
-									<Clock size={12} />
-									{report.status}
-								</div>
-							</div>
-
-							<div {...stylex.props(styles.reportContent)}>
-								<div {...stylex.props(styles.reportReason)}>
-									<div {...stylex.props(styles.reasonLabel)}>Reason</div>
-									<div {...stylex.props(styles.reasonText)}>{report.reason}</div>
-								</div>
-
-								<div {...stylex.props(styles.targetSection)}>
-									<div {...stylex.props(styles.targetHeader)}>
-										<TargetIcon size={14} />
-										<span {...stylex.props(styles.targetLabel)}>Reported {report.targetType}</span>
+						return (
+							<article key={report.id} {...stylex.props(styles.reportCard)}>
+								<div {...stylex.props(styles.reportHeader)}>
+									<div {...stylex.props(styles.reportInfo)}>
+										<span
+											{...stylex.props(styles.reportBadge, getTargetBadgeStyle(report.targetType))}
+										>
+											<TargetIcon size={12} />
+											{report.targetType}
+										</span>
+										<span {...stylex.props(styles.reportId)}>Report #{report.id}</span>
 									</div>
-									<p {...stylex.props(styles.targetContent)}>{report.targetContent}</p>
-								</div>
-
-								<div {...stylex.props(styles.reportMeta)}>
-									<span {...stylex.props(styles.metaItem)}>
-										<User size={12} />
-										Reported by @{report.reporterUsername}
-									</span>
-									<span {...stylex.props(styles.metaItem)}>
+									<div {...stylex.props(styles.reportStatus, getStatusStyle(report.status))}>
 										<Clock size={12} />
-										{report.createdAt}
-									</span>
-								</div>
-							</div>
-
-							<div {...stylex.props(styles.reportFooter)}>
-								<Link {...targetLink} {...stylex.props(styles.viewLink)}>
-									<Eye size={14} />
-									View {report.targetType}
-								</Link>
-
-								{report.status === "pending" && (
-									<div {...stylex.props(styles.actions)}>
-										<button
-											type="button"
-											{...stylex.props(styles.actionButton, styles.dismissButton)}
-										>
-											<X size={14} />
-											Dismiss
-										</button>
-										<button
-											type="button"
-											{...stylex.props(styles.actionButton, styles.resolveButton)}
-										>
-											<Check size={14} />
-											Take Action
-										</button>
+										{report.status}
 									</div>
-								)}
-							</div>
-						</article>
-					);
-				})}
+								</div>
+
+								<div {...stylex.props(styles.reportContent)}>
+									<div {...stylex.props(styles.reportReason)}>
+										<div {...stylex.props(styles.reasonLabel)}>Reason</div>
+										<div {...stylex.props(styles.reasonText)}>{report.reason}</div>
+									</div>
+
+									<div {...stylex.props(styles.targetSection)}>
+										<div {...stylex.props(styles.targetHeader)}>
+											<TargetIcon size={14} />
+											<span {...stylex.props(styles.targetLabel)}>
+												Reported {report.targetType}
+											</span>
+										</div>
+										<p {...stylex.props(styles.targetContent)}>
+											{report.description || `Target ID: ${report.targetId}`}
+										</p>
+									</div>
+
+									<div {...stylex.props(styles.reportMeta)}>
+										<span {...stylex.props(styles.metaItem)}>
+											<User size={12} />
+											Reported by @{report.reporterUsername}
+										</span>
+										<span {...stylex.props(styles.metaItem)}>
+											<Clock size={12} />
+											{new Date(report.createdAt).toLocaleString()}
+										</span>
+									</div>
+								</div>
+
+								<div {...stylex.props(styles.reportFooter)}>
+									<Link {...targetLink} {...stylex.props(styles.viewLink)}>
+										<Eye size={14} />
+										View {report.targetType}
+									</Link>
+
+									{report.status === "pending" && (
+										<div {...stylex.props(styles.actions)}>
+											<button
+												type="button"
+												onClick={() => handleReview(report.id, "dismiss")}
+												{...stylex.props(styles.actionButton, styles.dismissButton)}
+											>
+												<X size={14} />
+												Dismiss
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													handleReview(
+														report.id,
+														report.targetType === "user" ? "ban_user" : "remove_content",
+													)
+												}
+												{...stylex.props(styles.actionButton, styles.resolveButton)}
+											>
+												<Check size={14} />
+												Take Action
+											</button>
+										</div>
+									)}
+								</div>
+							</article>
+						);
+					})
+				)}
 			</div>
 		</main>
 	);

@@ -6,6 +6,17 @@ service LikesService {
   rpc ToggleCommentLike(ToggleCommentLikeRequest) returns (LikeResponse);
   rpc GetPostLikeStatus(GetLikeStatusRequest) returns (LikeStatusResponse);
   rpc GetCommentLikeStatus(GetCommentLikeStatusRequest) returns (LikeStatusResponse);
+  rpc ReactToPost(ReactToPostRequest) returns (ReactionResponse);
+  rpc ReactToComment(ReactToCommentRequest) returns (ReactionResponse);
+  rpc GetPostReactions(GetPostReactionsRequest) returns (ReactionCountsResponse);
+}
+
+enum ReactionType {
+  REACTION_TYPE_LIKE = 0;
+  REACTION_TYPE_LOVE = 1;
+  REACTION_TYPE_CELEBRATE = 2;
+  REACTION_TYPE_SUPPORT = 3;
+  REACTION_TYPE_FUNNY = 4;
 }
 
 message TogglePostLikeRequest {
@@ -36,4 +47,36 @@ message GetCommentLikeStatusRequest {
 
 message LikeStatusResponse {
   bool liked = 1;
+}
+
+message ReactToPostRequest {
+  string session_token = 1;
+  string post_id = 2;
+  ReactionType reaction_type = 3;
+}
+
+message ReactToCommentRequest {
+  string session_token = 1;
+  string comment_id = 2;
+  ReactionType reaction_type = 3;
+}
+
+message ReactionResponse {
+  bool success = 1;
+  bool reacted = 2;
+  ReactionType reaction_type = 3;
+  optional string error = 4;
+}
+
+message GetPostReactionsRequest {
+  string post_id = 1;
+}
+
+message ReactionCount {
+  ReactionType reaction_type = 1;
+  int32 count = 2;
+}
+
+message ReactionCountsResponse {
+  repeated ReactionCount counts = 1;
 }

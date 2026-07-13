@@ -5,7 +5,15 @@ import { generateId } from "./utils";
 
 const { notifications, users, posts, comments } = schema;
 
-export type NotificationType = "like" | "comment" | "follow" | "mention";
+export type NotificationType =
+	| "like"
+	| "comment"
+	| "follow"
+	| "friend_request"
+	| "mention"
+	| "post_shared"
+	| "community_invite"
+	| "admin_warning";
 
 export interface CreateNotificationInput {
 	userId: string; // recipient

@@ -1,7 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Calendar, Heart, MessageSquare, Trash2, User } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { requireAdminAccess } from "../../lib/auth-guard";
+import {
+	type AdminComment,
+	deleteAdminComment,
+	deleteAdminPost,
+	getAdminPost,
+	getAdminPostComments,
+	listAdminReports,
+} from "../../server/functions/admin";
 import { colors, radii, spacing } from "../../tokens.stylex";
 
 const styles = stylex.create({
@@ -194,39 +203,85 @@ export const Route = createFileRoute("/posts/$postId")({
 	component: PostDetailPage,
 });
 
-// Mock data - will be replaced with gRPC calls
-const mockPost = {
-	id: "1",
-	author: { id: "1", username: "johndoe", displayName: "John Doe" },
-	content:
-		"Just finished building a new feature! Excited to share it with everyone. This is going to revolutionize how we work. The team has been working really hard on this and I cannot wait for everyone to try it out.",
-	likes: 24,
-	comments: 8,
-	createdAt: "2024-01-15 14:30",
-};
+interface AdminPost {
+	id: string;
+	author: { id: string; username: string; displayName: string };
+	content: string;
+	likeCount: number;
+	commentCount: number;
+	createdAt: string;
+}
 
-const mockReports = [
-	{ id: "1", reason: "Spam", reporter: "@user123", createdAt: "1 hour ago" },
-	{ id: "2", reason: "Misleading content", reporter: "@alice", createdAt: "3 hours ago" },
-];
-
-const mockComments = [
-	{
-		id: "1",
-		author: { username: "alice", displayName: "Alice" },
-		content: "Great work!",
-		createdAt: "1 hour ago",
-	},
-	{
-		id: "2",
-		author: { username: "bob", displayName: "Bob" },
-		content: "Looking forward to trying this out!",
-		createdAt: "2 hours ago",
-	},
-];
+const flattenComments = (items: AdminComment[]): AdminComment[] =>
+	items.flatMap((comment) => [comment, ...flattenComments(comment.replies)]);
 
 function PostDetailPage() {
-	const { postId: _postId } = Route.useParams();
+	const { postId } = Route.useParams();
+	const navigate = useNavigate();
+	const [post, setPost] = useState<AdminPost | null>(null);
+	const [comments, setComments] = useState<AdminComment[]>([]);
+	const [reports, setReports] = useState<
+		{ id: string; reason: string; reporterUsername: string; createdAt: string }[]
+	>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadPost = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const [postResponse, commentsResponse, reportsResponse] = await Promise.all([
+				getAdminPost({ data: { postId } }),
+				getAdminPostComments({ data: { postId } }),
+				listAdminReports({ data: { typeFilter: "post" } }),
+			]);
+			setPost(postResponse);
+			setComments(flattenComments(commentsResponse));
+			setReports(reportsResponse.reports.filter((report) => report.targetId === postId));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load post");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [postId]);
+
+	useEffect(() => {
+		loadPost();
+	}, [loadPost]);
+
+	const handleDeletePost = async () => {
+		const reason = window.prompt("Reason for deleting this post?", "Content policy violation");
+		if (!reason) return;
+		try {
+			await deleteAdminPost({ data: { postId, reason } });
+			navigate({ to: "/posts" });
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete post");
+		}
+	};
+
+	const handleDeleteComment = async (commentId: string) => {
+		const reason = window.prompt("Reason for deleting this comment?", "Content policy violation");
+		if (!reason) return;
+		try {
+			await deleteAdminComment({ data: { commentId, reason } });
+			await loadPost();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete comment");
+		}
+	};
+
+	if (isLoading) {
+		return <main {...stylex.props(styles.container, styles.emptyState)}>Loading post...</main>;
+	}
+
+	if (error || !post) {
+		return (
+			<main {...stylex.props(styles.container, styles.emptyState)}>
+				{error || "Post not found"}
+			</main>
+		);
+	}
 
 	return (
 		<main {...stylex.props(styles.container)}>
@@ -238,7 +293,7 @@ function PostDetailPage() {
 			<div {...stylex.props(styles.card)}>
 				<div {...stylex.props(styles.cardHeader)}>
 					<h1 {...stylex.props(styles.cardTitle)}>Post Details</h1>
-					<button type="button" {...stylex.props(styles.deleteButton)}>
+					<button type="button" onClick={handleDeletePost} {...stylex.props(styles.deleteButton)}>
 						<Trash2 size={16} />
 						Delete Post
 					</button>
@@ -251,26 +306,26 @@ function PostDetailPage() {
 						<div {...stylex.props(styles.authorInfo)}>
 							<Link
 								to="/users/$userId"
-								params={{ userId: mockPost.author.id }}
+								params={{ userId: post.author.id }}
 								{...stylex.props(styles.authorName)}
 							>
-								{mockPost.author.displayName}
+								{post.author.displayName}
 							</Link>
-							<span {...stylex.props(styles.authorHandle)}>@{mockPost.author.username}</span>
+							<span {...stylex.props(styles.authorHandle)}>@{post.author.username}</span>
 						</div>
 					</div>
 
-					<p {...stylex.props(styles.postContent)}>{mockPost.content}</p>
+					<p {...stylex.props(styles.postContent)}>{post.content}</p>
 
 					<div {...stylex.props(styles.postMeta)}>
 						<span {...stylex.props(styles.metaItem)}>
-							<Heart size={14} /> {mockPost.likes} likes
+							<Heart size={14} /> {post.likeCount} likes
 						</span>
 						<span {...stylex.props(styles.metaItem)}>
-							<MessageSquare size={14} /> {mockPost.comments} comments
+							<MessageSquare size={14} /> {post.commentCount} comments
 						</span>
 						<span {...stylex.props(styles.metaItem)}>
-							<Calendar size={14} /> {mockPost.createdAt}
+							<Calendar size={14} /> {new Date(post.createdAt).toLocaleString()}
 						</span>
 					</div>
 				</div>
@@ -278,14 +333,14 @@ function PostDetailPage() {
 
 			<div {...stylex.props(styles.card)}>
 				<div {...stylex.props(styles.cardHeader)}>
-					<h2 {...stylex.props(styles.cardTitle)}>Reports ({mockReports.length})</h2>
+					<h2 {...stylex.props(styles.cardTitle)}>Reports ({reports.length})</h2>
 				</div>
 				<div>
-					{mockReports.length === 0 ? (
+					{reports.length === 0 ? (
 						<p {...stylex.props(styles.emptyState)}>No reports for this post</p>
 					) : (
-						mockReports.map((report, index) => {
-							const isLast = index === mockReports.length - 1;
+						reports.map((report, index) => {
+							const isLast = index === reports.length - 1;
 							return (
 								<div
 									key={report.id}
@@ -293,9 +348,13 @@ function PostDetailPage() {
 								>
 									<div {...stylex.props(styles.reportHeader)}>
 										<span {...stylex.props(styles.reportReason)}>{report.reason}</span>
-										<span {...stylex.props(styles.reportTime)}>{report.createdAt}</span>
+										<span {...stylex.props(styles.reportTime)}>
+											{new Date(report.createdAt).toLocaleString()}
+										</span>
 									</div>
-									<span {...stylex.props(styles.reportUser)}>Reported by {report.reporter}</span>
+									<span {...stylex.props(styles.reportUser)}>
+										Reported by @{report.reporterUsername}
+									</span>
 								</div>
 							);
 						})
@@ -305,14 +364,14 @@ function PostDetailPage() {
 
 			<div {...stylex.props(styles.card)}>
 				<div {...stylex.props(styles.cardHeader)}>
-					<h2 {...stylex.props(styles.cardTitle)}>Comments ({mockComments.length})</h2>
+					<h2 {...stylex.props(styles.cardTitle)}>Comments ({comments.length})</h2>
 				</div>
 				<div>
-					{mockComments.length === 0 ? (
+					{comments.length === 0 ? (
 						<p {...stylex.props(styles.emptyState)}>No comments on this post</p>
 					) : (
-						mockComments.map((comment, index) => {
-							const isLast = index === mockComments.length - 1;
+						comments.map((comment, index) => {
+							const isLast = index === comments.length - 1;
 							return (
 								<div
 									key={comment.id}
@@ -325,7 +384,17 @@ function PostDetailPage() {
 										<span {...stylex.props(styles.commentAuthor)}>
 											{comment.author.displayName}
 										</span>
-										<span {...stylex.props(styles.commentTime)}>{comment.createdAt}</span>
+										<span {...stylex.props(styles.commentTime)}>
+											{new Date(comment.createdAt).toLocaleString()}
+										</span>
+										<button
+											type="button"
+											onClick={() => handleDeleteComment(comment.id)}
+											{...stylex.props(styles.deleteButton)}
+										>
+											<Trash2 size={14} />
+											Delete
+										</button>
 									</div>
 									<p {...stylex.props(styles.commentContent)}>{comment.content}</p>
 								</div>

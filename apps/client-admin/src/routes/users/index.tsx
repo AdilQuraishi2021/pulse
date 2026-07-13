@@ -1,7 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Ban, Eye, MoreVertical, Search, Shield, User } from "lucide-react";
+import { Ban, Eye, Search, Shield, Trash2, User, UserCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { requireAdminAccess } from "../../lib/auth-guard";
+import {
+	banAdminUser,
+	deleteAdminUser,
+	listAdminUsers,
+	unbanAdminUser,
+	updateAdminUserRole,
+} from "../../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
 
 const styles = stylex.create({
@@ -25,6 +33,11 @@ const styles = stylex.create({
 	searchContainer: {
 		position: "relative",
 		width: "300px",
+	},
+	filters: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.md,
 	},
 	searchIcon: {
 		position: "absolute",
@@ -178,6 +191,20 @@ const styles = stylex.create({
 			color: semanticColors.textPrimary,
 		},
 	},
+	roleSelect: {
+		paddingBlock: spacing.xs,
+		paddingInline: spacing.sm,
+		borderRadius: radii.md,
+		border: `1px solid ${semanticColors.borderDefault}`,
+		backgroundColor: semanticColors.surfaceInput,
+		color: semanticColors.textPrimary,
+		fontSize: "0.75rem",
+	},
+	emptyState: {
+		textAlign: "center",
+		color: semanticColors.textTertiary,
+		padding: spacing.xl,
+	},
 });
 
 export const Route = createFileRoute("/users/")({
@@ -185,88 +212,78 @@ export const Route = createFileRoute("/users/")({
 	component: UsersPage,
 });
 
-interface MockUser {
+interface AdminUser {
 	id: string;
 	username: string;
 	displayName: string;
 	email: string;
 	avatarUrl: string | null;
 	role: "user" | "admin" | "moderator";
-	status: "active" | "banned";
+	bannedAt: string | null;
+	bannedReason: string | null;
 	postCount: number;
-	joinedAt: string;
+	commentCount: number;
+	createdAt: string;
 }
 
-const mockUsers: MockUser[] = [
-	{
-		id: "1",
-		username: "alice",
-		displayName: "Alice Johnson",
-		email: "alice@test.com",
-		avatarUrl: null,
-		role: "user" as const,
-		status: "active" as const,
-		postCount: 3,
-		joinedAt: "2026-01-28",
-	},
-	{
-		id: "2",
-		username: "bob",
-		displayName: "Bob Smith",
-		email: "bob@test.com",
-		avatarUrl: null,
-		role: "user" as const,
-		status: "active" as const,
-		postCount: 2,
-		joinedAt: "2026-01-28",
-	},
-	{
-		id: "3",
-		username: "charlie",
-		displayName: "Charlie Brown",
-		email: "charlie@test.com",
-		avatarUrl: null,
-		role: "user" as const,
-		status: "active" as const,
-		postCount: 2,
-		joinedAt: "2026-01-28",
-	},
-	{
-		id: "4",
-		username: "diana",
-		displayName: "Diana Ross",
-		email: "diana@test.com",
-		avatarUrl: null,
-		role: "user" as const,
-		status: "active" as const,
-		postCount: 2,
-		joinedAt: "2026-01-29",
-	},
-	{
-		id: "5",
-		username: "admin",
-		displayName: "Admin User",
-		email: "admin@chirp.test",
-		avatarUrl: null,
-		role: "admin" as const,
-		status: "active" as const,
-		postCount: 0,
-		joinedAt: "2026-01-27",
-	},
-	{
-		id: "6",
-		username: "moderator",
-		displayName: "Moderator User",
-		email: "moderator@chirp.test",
-		avatarUrl: null,
-		role: "moderator" as const,
-		status: "active" as const,
-		postCount: 0,
-		joinedAt: "2026-01-27",
-	},
-];
-
 function UsersPage() {
+	const [users, setUsers] = useState<AdminUser[]>([]);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [roleFilter, setRoleFilter] = useState("all");
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadUsers = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const response = await listAdminUsers({ data: { searchQuery, roleFilter } });
+			setUsers(response.users);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load users");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [searchQuery, roleFilter]);
+
+	useEffect(() => {
+		loadUsers();
+	}, [loadUsers]);
+
+	const handleBanToggle = async (user: AdminUser) => {
+		try {
+			if (user.bannedAt) {
+				await unbanAdminUser({ data: { userId: user.id } });
+			} else {
+				const reason = window.prompt("Reason for banning this user?", "Policy violation");
+				if (!reason) return;
+				await banAdminUser({ data: { userId: user.id, reason } });
+			}
+			await loadUsers();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to update user status");
+		}
+	};
+
+	const handleRoleChange = async (userId: string, role: AdminUser["role"]) => {
+		try {
+			await updateAdminUserRole({ data: { userId, role } });
+			await loadUsers();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to update role");
+		}
+	};
+
+	const handleDelete = async (user: AdminUser) => {
+		if (!window.confirm(`Delete @${user.username}? This cannot be undone.`)) return;
+		try {
+			await deleteAdminUser({ data: { userId: user.id } });
+			await loadUsers();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete user");
+		}
+	};
+
 	const getRoleBadgeStyle = (role: string) => {
 		switch (role) {
 			case "admin":
@@ -293,11 +310,31 @@ function UsersPage() {
 		<main {...stylex.props(styles.container)}>
 			<header {...stylex.props(styles.header)}>
 				<h1 {...stylex.props(styles.title)}>Users</h1>
-				<div {...stylex.props(styles.searchContainer)}>
-					<Search size={16} {...stylex.props(styles.searchIcon)} />
-					<input type="text" placeholder="Search users..." {...stylex.props(styles.searchInput)} />
+				<div {...stylex.props(styles.filters)}>
+					<select
+						value={roleFilter}
+						onChange={(event) => setRoleFilter(event.target.value)}
+						{...stylex.props(styles.roleSelect)}
+					>
+						<option value="all">All Roles</option>
+						<option value="user">Users</option>
+						<option value="moderator">Moderators</option>
+						<option value="admin">Admins</option>
+					</select>
+					<div {...stylex.props(styles.searchContainer)}>
+						<Search size={16} {...stylex.props(styles.searchIcon)} />
+						<input
+							type="text"
+							placeholder="Search users..."
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
+							{...stylex.props(styles.searchInput)}
+						/>
+					</div>
 				</div>
 			</header>
+
+			{error && <p {...stylex.props(styles.emptyState)}>{error}</p>}
 
 			<table {...stylex.props(styles.table)}>
 				<thead {...stylex.props(styles.tableHeader)}>
@@ -312,68 +349,104 @@ function UsersPage() {
 					</tr>
 				</thead>
 				<tbody>
-					{mockUsers.map((user, index) => {
-						const isLast = index === mockUsers.length - 1;
-						const RoleIcon = getRoleIcon(user.role);
-						return (
-							<tr key={user.id} {...stylex.props(styles.tableRow, isLast && styles.tableRowLast)}>
-								<td {...stylex.props(styles.td)}>
-									<div {...stylex.props(styles.userCell)}>
-										<div {...stylex.props(styles.avatar)}>
-											{user.avatarUrl ? (
-												<img
-													src={user.avatarUrl}
-													alt={user.displayName}
-													{...stylex.props(styles.avatarImg)}
-												/>
-											) : (
-												<User size={20} />
-											)}
+					{isLoading ? (
+						<tr>
+							<td colSpan={7} {...stylex.props(styles.emptyState)}>
+								Loading users...
+							</td>
+						</tr>
+					) : users.length === 0 ? (
+						<tr>
+							<td colSpan={7} {...stylex.props(styles.emptyState)}>
+								No users found.
+							</td>
+						</tr>
+					) : (
+						users.map((user, index) => {
+							const isLast = index === users.length - 1;
+							const RoleIcon = getRoleIcon(user.role);
+							return (
+								<tr key={user.id} {...stylex.props(styles.tableRow, isLast && styles.tableRowLast)}>
+									<td {...stylex.props(styles.td)}>
+										<div {...stylex.props(styles.userCell)}>
+											<div {...stylex.props(styles.avatar)}>
+												{user.avatarUrl ? (
+													<img
+														src={user.avatarUrl}
+														alt={user.displayName}
+														{...stylex.props(styles.avatarImg)}
+													/>
+												) : (
+													<User size={20} />
+												)}
+											</div>
+											<div {...stylex.props(styles.userInfo)}>
+												<span {...stylex.props(styles.userName)}>{user.displayName}</span>
+												<span {...stylex.props(styles.userHandle)}>@{user.username}</span>
+											</div>
 										</div>
-										<div {...stylex.props(styles.userInfo)}>
-											<span {...stylex.props(styles.userName)}>{user.displayName}</span>
-											<span {...stylex.props(styles.userHandle)}>@{user.username}</span>
-										</div>
-									</div>
-								</td>
-								<td {...stylex.props(styles.td)}>{user.email}</td>
-								<td {...stylex.props(styles.td)}>
-									<span {...stylex.props(styles.badge, getRoleBadgeStyle(user.role))}>
-										<RoleIcon size={12} style={{ marginRight: "4px" }} />
-										{user.role}
-									</span>
-								</td>
-								<td {...stylex.props(styles.td)}>
-									<span
-										{...stylex.props(
-											user.status === "active" ? styles.statusActive : styles.statusBanned,
-										)}
-									>
-										{user.status === "banned" ? "Banned" : "Active"}
-									</span>
-								</td>
-								<td {...stylex.props(styles.td)}>{user.postCount}</td>
-								<td {...stylex.props(styles.td)}>{user.joinedAt}</td>
-								<td {...stylex.props(styles.td)}>
-									<div {...stylex.props(styles.actionsCell)}>
-										<Link
-											to="/users/$userId"
-											params={{ userId: user.id }}
-											{...stylex.props(styles.viewLink)}
+									</td>
+									<td {...stylex.props(styles.td)}>{user.email}</td>
+									<td {...stylex.props(styles.td)}>
+										<span {...stylex.props(styles.badge, getRoleBadgeStyle(user.role))}>
+											<RoleIcon size={12} style={{ marginRight: "4px" }} />
+											{user.role}
+										</span>
+									</td>
+									<td {...stylex.props(styles.td)}>
+										<span
+											{...stylex.props(user.bannedAt ? styles.statusBanned : styles.statusActive)}
 										>
-											<Eye size={16} />
-										</Link>
-										<button type="button" {...stylex.props(styles.actionButton)}>
-											<Ban size={16} />
-										</button>
-										<button type="button" {...stylex.props(styles.actionButton)}>
-											<MoreVertical size={16} />
-										</button>
-									</div>
-								</td>
-							</tr>
-						);
-					})}
+											{user.bannedAt ? "Banned" : "Active"}
+										</span>
+									</td>
+									<td {...stylex.props(styles.td)}>{user.postCount}</td>
+									<td {...stylex.props(styles.td)}>
+										{new Date(user.createdAt).toLocaleDateString()}
+									</td>
+									<td {...stylex.props(styles.td)}>
+										<div {...stylex.props(styles.actionsCell)}>
+											<select
+												value={user.role}
+												onChange={(event) =>
+													handleRoleChange(user.id, event.target.value as AdminUser["role"])
+												}
+												aria-label={`Change role for ${user.username}`}
+												{...stylex.props(styles.roleSelect)}
+											>
+												<option value="user">user</option>
+												<option value="moderator">moderator</option>
+												<option value="admin">admin</option>
+											</select>
+											<Link
+												to="/users/$userId"
+												params={{ userId: user.id }}
+												{...stylex.props(styles.viewLink)}
+											>
+												<Eye size={16} />
+											</Link>
+											<button
+												type="button"
+												onClick={() => handleBanToggle(user)}
+												title={user.bannedAt ? "Unban user" : "Ban user"}
+												{...stylex.props(styles.actionButton)}
+											>
+												{user.bannedAt ? <UserCheck size={16} /> : <Ban size={16} />}
+											</button>
+											<button
+												type="button"
+												onClick={() => handleDelete(user)}
+												title="Delete user"
+												{...stylex.props(styles.actionButton)}
+											>
+												<Trash2 size={16} />
+											</button>
+										</div>
+									</td>
+								</tr>
+							);
+						})
+					)}
 				</tbody>
 			</table>
 		</main>

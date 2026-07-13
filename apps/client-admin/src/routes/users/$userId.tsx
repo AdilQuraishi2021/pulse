@@ -1,7 +1,27 @@
 import * as stylex from "@stylexjs/stylex";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Ban, Calendar, Heart, Mail, MessageSquare, Shield, User } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+	ArrowLeft,
+	Ban,
+	Calendar,
+	Heart,
+	Mail,
+	MessageSquare,
+	Shield,
+	Trash2,
+	User,
+	UserCheck,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { requireAdminAccess } from "../../lib/auth-guard";
+import {
+	banAdminUser,
+	deleteAdminUser,
+	getAdminUserDetails,
+	getAdminUserPosts,
+	unbanAdminUser,
+	updateAdminUserRole,
+} from "../../server/functions/admin";
 import { colors, radii, spacing } from "../../tokens.stylex";
 
 const styles = stylex.create({
@@ -231,48 +251,105 @@ export const Route = createFileRoute("/users/$userId")({
 	component: UserDetailPage,
 });
 
-// Mock data - will be replaced with gRPC calls
-const mockUser = {
-	id: "1",
-	username: "johndoe",
-	displayName: "John Doe",
-	email: "john@example.com",
-	avatarUrl: null,
-	role: "user" as const,
-	status: "active" as const,
-	bio: "Software developer and tech enthusiast",
-	postCount: 42,
-	commentCount: 128,
-	likeCount: 512,
-	joinedAt: "2024-01-15",
-};
+interface AdminUserDetails {
+	id: string;
+	username: string;
+	displayName: string;
+	email: string;
+	avatarUrl: string | null;
+	role: "user" | "admin" | "moderator";
+	bannedAt: string | null;
+	bannedReason: string | null;
+	bio: string | null;
+	postCount: number;
+	commentCount: number;
+	createdAt: string;
+}
 
-const mockPosts = [
-	{
-		id: "1",
-		content: "Just finished building a new feature! Excited to share it with everyone.",
-		likes: 24,
-		comments: 8,
-		createdAt: "2 hours ago",
-	},
-	{
-		id: "2",
-		content: "Great weather today, perfect for coding outdoors.",
-		likes: 15,
-		comments: 3,
-		createdAt: "1 day ago",
-	},
-	{
-		id: "3",
-		content: "Learning about gRPC and loving it so far!",
-		likes: 42,
-		comments: 12,
-		createdAt: "3 days ago",
-	},
-];
+interface AdminPost {
+	id: string;
+	content: string;
+	likeCount: number;
+	commentCount: number;
+	createdAt: string;
+}
 
 function UserDetailPage() {
 	const { userId } = Route.useParams();
+	const navigate = useNavigate();
+	const [user, setUser] = useState<AdminUserDetails | null>(null);
+	const [posts, setPosts] = useState<AdminPost[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadUser = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const userResponse = await getAdminUserDetails({ data: { userId } });
+			setUser(userResponse);
+			const postsResponse = await getAdminUserPosts({ data: { username: userResponse.username } });
+			setPosts(postsResponse);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load user");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [userId]);
+
+	useEffect(() => {
+		loadUser();
+	}, [loadUser]);
+
+	const handleBanToggle = async () => {
+		if (!user) return;
+		try {
+			if (user.bannedAt) {
+				await unbanAdminUser({ data: { userId: user.id } });
+			} else {
+				const reason = window.prompt("Reason for banning this user?", "Policy violation");
+				if (!reason) return;
+				await banAdminUser({ data: { userId: user.id, reason } });
+			}
+			await loadUser();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to update user status");
+		}
+	};
+
+	const handleRoleChange = async () => {
+		if (!user) return;
+		const role = window.prompt("Set role to user, moderator, or admin", user.role);
+		if (role !== "user" && role !== "moderator" && role !== "admin") return;
+		try {
+			await updateAdminUserRole({ data: { userId: user.id, role } });
+			await loadUser();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to update role");
+		}
+	};
+
+	const handleDelete = async () => {
+		if (!user || !window.confirm(`Delete @${user.username}? This cannot be undone.`)) return;
+		try {
+			await deleteAdminUser({ data: { userId: user.id } });
+			navigate({ to: "/users" });
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete user");
+		}
+	};
+
+	if (isLoading) {
+		return <main {...stylex.props(styles.container, styles.emptyState)}>Loading user...</main>;
+	}
+
+	if (error || !user) {
+		return (
+			<main {...stylex.props(styles.container, styles.emptyState)}>
+				{error || "User not found"}
+			</main>
+		);
+	}
 
 	return (
 		<main {...stylex.props(styles.container)}>
@@ -284,33 +361,60 @@ function UserDetailPage() {
 			<header {...stylex.props(styles.header)}>
 				<div {...stylex.props(styles.userSection)}>
 					<div {...stylex.props(styles.avatar)}>
-						<User size={40} />
+						{user.avatarUrl ? (
+							<img src={user.avatarUrl} alt="" width={80} height={80} />
+						) : (
+							<User size={40} />
+						)}
 					</div>
 					<div {...stylex.props(styles.userInfo)}>
-						<h1 {...stylex.props(styles.displayName)}>{mockUser.displayName}</h1>
-						<span {...stylex.props(styles.username)}>@{mockUser.username}</span>
+						<h1 {...stylex.props(styles.displayName)}>{user.displayName}</h1>
+						<span {...stylex.props(styles.username)}>@{user.username}</span>
 						<div {...stylex.props(styles.badges)}>
-							<span {...stylex.props(styles.badge, styles.badgeUser)}>{mockUser.role}</span>
 							<span
 								{...stylex.props(
 									styles.badge,
-									mockUser.status === "active" ? styles.badgeActive : styles.badgeBanned,
+									user.role === "admin" ? styles.badgeAdmin : styles.badgeUser,
 								)}
 							>
-								{mockUser.status}
+								{user.role}
+							</span>
+							<span
+								{...stylex.props(
+									styles.badge,
+									user.bannedAt ? styles.badgeBanned : styles.badgeActive,
+								)}
+							>
+								{user.bannedAt ? "banned" : "active"}
 							</span>
 						</div>
 					</div>
 				</div>
 
 				<div {...stylex.props(styles.actions)}>
-					<button type="button" {...stylex.props(styles.actionButton, styles.roleButton)}>
+					<button
+						type="button"
+						onClick={handleRoleChange}
+						{...stylex.props(styles.actionButton, styles.roleButton)}
+					>
 						<Shield size={16} />
 						Change Role
 					</button>
-					<button type="button" {...stylex.props(styles.actionButton, styles.banButton)}>
-						<Ban size={16} />
-						Ban User
+					<button
+						type="button"
+						onClick={handleBanToggle}
+						{...stylex.props(styles.actionButton, styles.banButton)}
+					>
+						{user.bannedAt ? <UserCheck size={16} /> : <Ban size={16} />}
+						{user.bannedAt ? "Unban User" : "Ban User"}
+					</button>
+					<button
+						type="button"
+						onClick={handleDelete}
+						{...stylex.props(styles.actionButton, styles.banButton)}
+					>
+						<Trash2 size={16} />
+						Delete User
 					</button>
 				</div>
 			</header>
@@ -327,14 +431,16 @@ function UserDetailPage() {
 									<Mail size={16} {...stylex.props(styles.infoIcon)} />
 									<div>
 										<div {...stylex.props(styles.infoLabel)}>Email</div>
-										<div {...stylex.props(styles.infoValue)}>{mockUser.email}</div>
+										<div {...stylex.props(styles.infoValue)}>{user.email}</div>
 									</div>
 								</div>
 								<div {...stylex.props(styles.infoItem)}>
 									<Calendar size={16} {...stylex.props(styles.infoIcon)} />
 									<div>
 										<div {...stylex.props(styles.infoLabel)}>Joined</div>
-										<div {...stylex.props(styles.infoValue)}>{mockUser.joinedAt}</div>
+										<div {...stylex.props(styles.infoValue)}>
+											{new Date(user.createdAt).toLocaleDateString()}
+										</div>
 									</div>
 								</div>
 								<div {...stylex.props(styles.infoItem)}>
@@ -355,16 +461,16 @@ function UserDetailPage() {
 						<div {...stylex.props(styles.cardContent)}>
 							<div {...stylex.props(styles.statsGrid)}>
 								<div {...stylex.props(styles.stat)}>
-									<div {...stylex.props(styles.statValue)}>{mockUser.postCount}</div>
+									<div {...stylex.props(styles.statValue)}>{user.postCount}</div>
 									<div {...stylex.props(styles.statLabel)}>Posts</div>
 								</div>
 								<div {...stylex.props(styles.stat)}>
-									<div {...stylex.props(styles.statValue)}>{mockUser.commentCount}</div>
+									<div {...stylex.props(styles.statValue)}>{user.commentCount}</div>
 									<div {...stylex.props(styles.statLabel)}>Comments</div>
 								</div>
 								<div {...stylex.props(styles.stat)}>
-									<div {...stylex.props(styles.statValue)}>{mockUser.likeCount}</div>
-									<div {...stylex.props(styles.statLabel)}>Likes</div>
+									<div {...stylex.props(styles.statValue)}>{user.bannedAt ? 1 : 0}</div>
+									<div {...stylex.props(styles.statLabel)}>Warnings</div>
 								</div>
 							</div>
 						</div>
@@ -377,23 +483,27 @@ function UserDetailPage() {
 							<h2 {...stylex.props(styles.cardTitle)}>Recent Posts</h2>
 						</div>
 						<div {...stylex.props(styles.postsList)}>
-							{mockPosts.map((post, index) => {
-								const isLast = index === mockPosts.length - 1;
-								return (
-									<div key={post.id} {...stylex.props(styles.post, isLast && styles.postLast)}>
-										<p {...stylex.props(styles.postContent)}>{post.content}</p>
-										<div {...stylex.props(styles.postMeta)}>
-											<span {...stylex.props(styles.postMetaItem)}>
-												<Heart size={12} /> {post.likes}
-											</span>
-											<span {...stylex.props(styles.postMetaItem)}>
-												<MessageSquare size={12} /> {post.comments}
-											</span>
-											<span>{post.createdAt}</span>
+							{posts.length === 0 ? (
+								<p {...stylex.props(styles.emptyState)}>No posts yet.</p>
+							) : (
+								posts.map((post, index) => {
+									const isLast = index === posts.length - 1;
+									return (
+										<div key={post.id} {...stylex.props(styles.post, isLast && styles.postLast)}>
+											<p {...stylex.props(styles.postContent)}>{post.content}</p>
+											<div {...stylex.props(styles.postMeta)}>
+												<span {...stylex.props(styles.postMetaItem)}>
+													<Heart size={12} /> {post.likeCount}
+												</span>
+												<span {...stylex.props(styles.postMetaItem)}>
+													<MessageSquare size={12} /> {post.commentCount}
+												</span>
+												<span>{new Date(post.createdAt).toLocaleString()}</span>
+											</div>
 										</div>
-									</div>
-								);
-							})}
+									);
+								})
+							)}
 						</div>
 					</div>
 				</div>

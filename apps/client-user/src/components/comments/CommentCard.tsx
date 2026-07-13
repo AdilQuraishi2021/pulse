@@ -6,6 +6,7 @@ import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
 import { deleteComment } from "../../server/functions/comments";
 import { toggleCommentLike } from "../../server/functions/likes";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
+import { ReportButton } from "../reports/ReportButton";
 import { ParsedContent } from "../shared/ParsedContent";
 import { RelativeTime } from "../shared/RelativeTime";
 import { UserAvatar } from "../users/UserAvatar";
@@ -270,6 +271,14 @@ export function CommentCard({ comment, currentUserId, onDelete }: CommentCardPro
 						>
 							<Trash2 size={16} />
 						</button>
+					)}
+					{currentUserId && !isOwnComment && (
+						<ReportButton
+							targetType="comment"
+							targetId={comment.id}
+							targetLabel="comment"
+							compact
+						/>
 					)}
 				</div>
 			</div>

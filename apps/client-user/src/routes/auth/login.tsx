@@ -264,7 +264,11 @@ function LoginPage() {
 		setLoading(true);
 
 		try {
-			await loginUser({ data: { email, password } });
+			const result = await loginUser({ data: { email, password } });
+			if (!result.success) {
+				setError(result.error || "Login failed");
+				return;
+			}
 			navigate({ to: "/" });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Login failed");

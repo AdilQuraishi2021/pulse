@@ -9,7 +9,9 @@ import {
 	LikesService,
 	NotificationsService,
 	PostsService,
+	ReportsService,
 	SearchService,
+	SocialService,
 	UsersService,
 } from "@chirp/proto";
 import { Server, ServerCredentials } from "@grpc/grpc-js";
@@ -25,7 +27,9 @@ import { followsHandler } from "./handlers/follows.handler";
 import { likesHandler } from "./handlers/likes.handler";
 import { notificationsHandler } from "./handlers/notifications.handler";
 import { postsHandler } from "./handlers/posts.handler";
+import { reportsHandler } from "./handlers/reports.handler";
 import { searchHandler } from "./handlers/search.handler";
+import { socialHandler } from "./handlers/social.handler";
 import { usersHandler } from "./handlers/users.handler";
 
 export function startGrpcServer(port: number): Promise<Server> {
@@ -53,6 +57,12 @@ export function startGrpcServer(port: number): Promise<Server> {
 	);
 	server.addService(
 		...adaptService(SearchService, withObservability(SearchService.typeName, searchHandler)),
+	);
+	server.addService(
+		...adaptService(ReportsService, withObservability(ReportsService.typeName, reportsHandler)),
+	);
+	server.addService(
+		...adaptService(SocialService, withObservability(SocialService.typeName, socialHandler)),
 	);
 	server.addService(
 		...adaptService(UsersService, withObservability(UsersService.typeName, usersHandler)),

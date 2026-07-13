@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { fromProtoTimestamp, getGrpcClient, requireGrpcSessionToken } from "../../lib/grpc.server";
+import {
+	fromProtoTimestamp,
+	getGrpcClient,
+	getGrpcSessionToken,
+	requireGrpcSessionToken,
+} from "../../lib/grpc.server";
 
 export const toggleBookmark = createServerFn({ method: "POST" })
 	.inputValidator((d: string) => d)
@@ -22,15 +27,32 @@ export const toggleBookmark = createServerFn({ method: "POST" })
 export const getBookmarkStatus = createServerFn()
 	.inputValidator((d: string) => d)
 	.handler(async ({ data: postId }) => {
-		const sessionToken = await requireGrpcSessionToken();
-		const client = getGrpcClient();
+		const sessionToken = await getGrpcSessionToken();
+		if (!sessionToken) {
+			return { bookmarked: false };
+		}
 
-		const { response } = await client.bookmarks.getBookmarkStatus({
-			sessionToken,
-			postId,
-		});
+		try {
+			const client = getGrpcClient();
 
-		return { bookmarked: response.bookmarked };
+			const { response } = await client.bookmarks.getBookmarkStatus({
+				sessionToken,
+				postId,
+			});
+
+			return { bookmarked: response.bookmarked };
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.message.includes("ECONNREFUSED") ||
+					error.message.includes("No connection established") ||
+					error.message.includes("Connection dropped"))
+			) {
+				return { bookmarked: false };
+			}
+
+			throw error;
+		}
 	});
 
 export const getBookmarkedPosts = createServerFn()

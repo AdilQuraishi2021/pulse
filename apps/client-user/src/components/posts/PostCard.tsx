@@ -1,10 +1,27 @@
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
-import { Edit, Heart, MessageCircle, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+	Edit,
+	HandHeart,
+	Heart,
+	Laugh,
+	MessageCircle,
+	PartyPopper,
+	Repeat2,
+	Share2,
+	ThumbsUp,
+	Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { broadcastLiveActivity } from "../../hooks/useLiveRefresh";
-import { togglePostLike } from "../../server/functions/likes";
+import {
+	getPostReactions,
+	type ReactionName,
+	reactToPost,
+	togglePostLike,
+} from "../../server/functions/likes";
 import { deletePost } from "../../server/functions/posts";
+import { getShareCount, repost, sharePost } from "../../server/functions/social";
 import {
 	colors,
 	fontSize,
@@ -14,6 +31,7 @@ import {
 	shadows,
 	spacing,
 } from "../../tokens.stylex";
+import { ReportButton } from "../reports/ReportButton";
 import { ParsedContent } from "../shared/ParsedContent";
 import { RelativeTime } from "../shared/RelativeTime";
 import { UserAvatar } from "../users/UserAvatar";
@@ -123,6 +141,40 @@ const styles = stylex.create({
 		marginLeft: "-0.5rem",
 		paddingTop: spacing.sm,
 		borderTop: `1px solid ${semanticColors.borderSubtle}`,
+		flexWrap: "wrap",
+	},
+	reactionGroup: {
+		display: "flex",
+		alignItems: "center",
+		gap: "0.125rem",
+		padding: "0.125rem",
+		borderRadius: radii.full,
+		backgroundColor: semanticColors.bgTertiary,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+	},
+	reactionButton: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		width: "2rem",
+		height: "2rem",
+		borderRadius: radii.full,
+		border: "none",
+		backgroundColor: "transparent",
+		color: semanticColors.textTertiary,
+		cursor: "pointer",
+		":hover": {
+			backgroundColor: semanticColors.bgPrimary,
+			color: semanticColors.primary,
+		},
+		":disabled": {
+			opacity: 0.5,
+			cursor: "not-allowed",
+		},
+	},
+	reactionButtonActive: {
+		backgroundColor: semanticColors.primaryLight,
+		color: semanticColors.primary,
 	},
 	actionButton: {
 		display: "flex",
@@ -168,6 +220,29 @@ const styles = stylex.create({
 			backgroundColor: colors.blueAlpha10,
 		},
 	},
+	shareButton: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		paddingLeft: spacing.sm,
+		paddingRight: spacing.sm,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		borderRadius: radii.full,
+		transition: "all 0.2s",
+		backgroundColor: "transparent",
+		border: "none",
+		cursor: "pointer",
+		color: semanticColors.textTertiary,
+		":hover": {
+			color: colors.green600,
+			backgroundColor: "rgba(16, 185, 129, 0.1)",
+		},
+		":disabled": {
+			opacity: 0.5,
+			cursor: "not-allowed",
+		},
+	},
 	actionCount: {
 		fontSize: "0.875rem",
 		fontWeight: 500,
@@ -210,6 +285,18 @@ const styles = stylex.create({
 	},
 });
 
+const reactionOptions: Array<{
+	name: ReactionName;
+	label: string;
+	icon: typeof ThumbsUp;
+}> = [
+	{ name: "like", label: "Like", icon: ThumbsUp },
+	{ name: "love", label: "Love", icon: Heart },
+	{ name: "celebrate", label: "Celebrate", icon: PartyPopper },
+	{ name: "support", label: "Support", icon: HandHeart },
+	{ name: "funny", label: "Funny", icon: Laugh },
+];
+
 interface PostCardProps {
 	post: {
 		id: string;
@@ -233,11 +320,60 @@ interface PostCardProps {
 export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 	const [liked, setLiked] = useState(Boolean(post.isLiked));
 	const [likeCount, setLikeCount] = useState(post.likeCount);
+	const [selectedReaction, setSelectedReaction] = useState<ReactionName | null>(
+		post.isLiked ? "like" : null,
+	);
+	const [reactionCounts, setReactionCounts] = useState<Record<ReactionName, number>>({
+		like: post.likeCount,
+		love: 0,
+		celebrate: 0,
+		support: 0,
+		funny: 0,
+	});
+	const [shareCount, setShareCount] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [animateLike, setAnimateLike] = useState(false);
 
 	const isOwnPost = currentUserId === post.author.id;
 	const canEdit = isOwnPost && Date.now() - post.createdAt.getTime() < 5 * 60 * 1000;
+	const totalReactions = Object.values(reactionCounts).reduce((sum, count) => sum + count, 0);
+
+	useEffect(() => {
+		let mounted = true;
+
+		const loadEngagement = async () => {
+			try {
+				const [reactions, shares] = await Promise.all([
+					getPostReactions({ data: post.id }),
+					getShareCount({ data: post.id }),
+				]);
+
+				if (!mounted) return;
+
+				const nextCounts: Record<ReactionName, number> = {
+					like: 0,
+					love: 0,
+					celebrate: 0,
+					support: 0,
+					funny: 0,
+				};
+				for (const reaction of reactions) {
+					nextCounts[reaction.reaction] = reaction.count;
+				}
+				setReactionCounts(nextCounts);
+				setLikeCount(nextCounts.like);
+				setShareCount(shares);
+			} catch (error) {
+				console.error("Failed to load engagement:", error);
+			}
+		};
+
+		void loadEngagement();
+
+		return () => {
+			mounted = false;
+		};
+	}, [post.id]);
 
 	const handleLike = async () => {
 		if (loading) return;
@@ -246,7 +382,12 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 		try {
 			const result = await togglePostLike({ data: post.id });
 			setLiked(result.liked);
+			setSelectedReaction(result.liked ? "like" : null);
 			setLikeCount((prev) => (result.liked ? prev + 1 : prev - 1));
+			setReactionCounts((prev) => ({
+				...prev,
+				like: Math.max(0, prev.like + (result.liked ? 1 : -1)),
+			}));
 			if (result.liked) {
 				setAnimateLike(true);
 				setTimeout(() => setAnimateLike(false), 400);
@@ -254,6 +395,67 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 			broadcastLiveActivity();
 		} catch (error) {
 			console.error("Failed to like post:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleReaction = async (reaction: ReactionName) => {
+		if (loading) return;
+		setLoading(true);
+
+		try {
+			const previousReaction = selectedReaction;
+			const result = await reactToPost({ data: { postId: post.id, reaction } });
+			setSelectedReaction(result.reacted ? result.reaction : null);
+			setLiked(result.reacted);
+			const nextCounts = { ...reactionCounts };
+			if (previousReaction) {
+				nextCounts[previousReaction] = Math.max(0, nextCounts[previousReaction] - 1);
+			}
+			if (result.reacted) {
+				nextCounts[result.reaction] += 1;
+			}
+			setReactionCounts(nextCounts);
+			setLikeCount(nextCounts.like);
+			if (result.reacted) {
+				setAnimateLike(true);
+				setTimeout(() => setAnimateLike(false), 400);
+			}
+			broadcastLiveActivity();
+		} catch (error) {
+			console.error("Failed to react:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleShare = async () => {
+		if (loading) return;
+		setLoading(true);
+		try {
+			const result = await sharePost({ data: { postId: post.id, destination: "external" } });
+			setShareCount(result.shareCount);
+			if (typeof navigator !== "undefined" && navigator.clipboard) {
+				await navigator.clipboard.writeText(`${window.location.origin}/posts/${post.id}`);
+			}
+			broadcastLiveActivity();
+		} catch (error) {
+			console.error("Failed to share post:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleRepost = async () => {
+		if (loading) return;
+		setLoading(true);
+		try {
+			const result = await repost({ data: { postId: post.id } });
+			setShareCount(result.shareCount);
+			broadcastLiveActivity();
+		} catch (error) {
+			console.error("Failed to repost:", error);
 		} finally {
 			setLoading(false);
 		}
@@ -317,6 +519,25 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 
 					{/* Actions */}
 					<div {...stylex.props(styles.actions)}>
+						<div {...stylex.props(styles.reactionGroup)} title="Reactions">
+							{reactionOptions.map((option) => {
+								const Icon = option.icon;
+								const active = selectedReaction === option.name;
+								return (
+									<button
+										key={option.name}
+										type="button"
+										onClick={() => handleReaction(option.name)}
+										disabled={loading}
+										{...stylex.props(styles.reactionButton, active && styles.reactionButtonActive)}
+										title={option.label}
+									>
+										<Icon size={16} />
+									</button>
+								);
+							})}
+						</div>
+
 						<button
 							type="button"
 							onClick={handleLike}
@@ -327,7 +548,7 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 								size={20}
 								{...stylex.props(liked && styles.heartFilled, animateLike && styles.heartBeat)}
 							/>
-							<span {...stylex.props(styles.actionCount)}>{likeCount}</span>
+							<span {...stylex.props(styles.actionCount)}>{totalReactions || likeCount}</span>
 						</button>
 
 						<Link
@@ -340,6 +561,31 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 						</Link>
 
 						<BookmarkButton postId={post.id} />
+
+						<button
+							type="button"
+							onClick={handleShare}
+							disabled={loading}
+							{...stylex.props(styles.shareButton)}
+							title="Share post"
+						>
+							<Share2 size={20} />
+							<span {...stylex.props(styles.actionCount)}>{shareCount}</span>
+						</button>
+
+						<button
+							type="button"
+							onClick={handleRepost}
+							disabled={loading}
+							{...stylex.props(styles.shareButton)}
+							title="Repost"
+						>
+							<Repeat2 size={20} />
+						</button>
+
+						{currentUserId && !isOwnPost && (
+							<ReportButton targetType="post" targetId={post.id} targetLabel="post" compact />
+						)}
 
 						{isOwnPost && (
 							<div {...stylex.props(styles.ownerActions)}>

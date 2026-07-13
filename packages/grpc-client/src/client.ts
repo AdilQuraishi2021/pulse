@@ -9,7 +9,9 @@ import {
 	LikesServiceClient,
 	NotificationsServiceClient,
 	PostsServiceClient,
+	ReportsServiceClient,
 	SearchServiceClient,
+	SocialServiceClient,
 	UsersServiceClient,
 } from "@chirp/proto";
 import { ChannelCredentials } from "@grpc/grpc-js";
@@ -24,11 +26,13 @@ export interface ChirpClient {
 	ai: AiServiceClient;
 	auth: AuthServiceClient;
 	posts: PostsServiceClient;
+	reports: ReportsServiceClient;
 	comments: CommentsServiceClient;
 	likes: LikesServiceClient;
 	follows: FollowsServiceClient;
 	feed: FeedServiceClient;
 	search: SearchServiceClient;
+	social: SocialServiceClient;
 	users: UsersServiceClient;
 	admin: AdminServiceClient;
 	notifications: NotificationsServiceClient;
@@ -55,11 +59,13 @@ export function createChirpClient(config: ChirpClientConfig): ChirpClient {
 		ai: new AiServiceClient(transport),
 		auth: new AuthServiceClient(transport),
 		posts: new PostsServiceClient(transport),
+		reports: new ReportsServiceClient(transport),
 		comments: new CommentsServiceClient(transport),
 		likes: new LikesServiceClient(transport),
 		follows: new FollowsServiceClient(transport),
 		feed: new FeedServiceClient(transport),
 		search: new SearchServiceClient(transport),
+		social: new SocialServiceClient(transport),
 		users: new UsersServiceClient(transport),
 		admin: new AdminServiceClient(transport),
 		notifications: new NotificationsServiceClient(transport),

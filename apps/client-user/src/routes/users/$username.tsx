@@ -1,14 +1,21 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Users, UserX } from "lucide-react";
-import { useEffect, useState } from "react";
+import { FileText, MessageSquare, UserPlus, Users, UserX } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { PostList } from "../../components/posts/PostList";
+import { ReportButton } from "../../components/reports/ReportButton";
 import { LoadingSpinner } from "../../components/shared/LoadingSpinner";
 import { FollowButton } from "../../components/users/FollowButton";
 import { UserAvatar } from "../../components/users/UserAvatar";
+import { UserBadges } from "../../components/users/UserBadges";
 import { getCurrentUser } from "../../server/functions/auth";
-import { getFollowerCount, getFollowingCount } from "../../server/functions/follows";
+import {
+	getFollowerCount,
+	getFollowingCount,
+	sendFriendRequest,
+} from "../../server/functions/follows";
 import { getUserPosts } from "../../server/functions/posts";
+import { getOrCreateConversation } from "../../server/functions/social";
 import { getUser } from "../../server/functions/users";
 import {
 	colors,
@@ -93,6 +100,42 @@ const styles = stylex.create({
 		display: "flex",
 		alignItems: "flex-end",
 		justifyContent: "space-between",
+		gap: spacing.md,
+	},
+	profileActions: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		flexWrap: "wrap",
+		justifyContent: "flex-end",
+	},
+	actionButton: {
+		display: "inline-flex",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: spacing.xs,
+		minHeight: "2.25rem",
+		paddingLeft: spacing.md,
+		paddingRight: spacing.md,
+		borderRadius: radii.full,
+		border: `1px solid ${semanticColors.borderDefault}`,
+		backgroundColor: semanticColors.surfaceCard,
+		color: semanticColors.textSecondary,
+		fontSize: fontSize.sm,
+		fontWeight: fontWeight.semibold,
+		cursor: "pointer",
+		":hover": {
+			backgroundColor: semanticColors.bgHover,
+			color: semanticColors.primary,
+		},
+		":disabled": {
+			opacity: 0.6,
+			cursor: "not-allowed",
+		},
+	},
+	reportAction: {
+		display: "inline-flex",
+		alignItems: "center",
 	},
 	avatarRing: {
 		borderRadius: radii.full,
@@ -163,20 +206,50 @@ const styles = stylex.create({
 	},
 });
 
+type ProfileUser = {
+	id: string;
+	email: string;
+	username: string;
+	displayName: string;
+	avatarUrl?: string;
+	bio?: string;
+	role: string;
+	createdAt: Date;
+};
+
+type ProfilePost = {
+	id: string;
+	content: string;
+	createdAt: Date;
+	updatedAt: Date;
+	author: {
+		id: string;
+		username: string;
+		displayName: string;
+		avatarUrl: string | undefined;
+	};
+	likeCount: number;
+	commentCount: number;
+	isLiked: boolean;
+};
+
+type CurrentUser = {
+	id: string;
+	username: string;
+	displayName: string;
+};
+
 function UserProfilePage() {
 	const { username } = Route.useParams();
-	const [user, setUser] = useState<any>(null);
-	const [posts, setPosts] = useState<any[]>([]);
-	const [currentUser, setCurrentUser] = useState<any>(null);
+	const [user, setUser] = useState<ProfileUser | null>(null);
+	const [posts, setPosts] = useState<ProfilePost[]>([]);
+	const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 	const [followerCount, setFollowerCount] = useState(0);
 	const [followingCount, setFollowingCount] = useState(0);
 	const [loading, setLoading] = useState(true);
+	const [actionLoading, setActionLoading] = useState(false);
 
-	useEffect(() => {
-		loadData();
-	}, [username]);
-
-	const loadData = async () => {
+	const loadData = useCallback(async () => {
 		try {
 			const [profileUser, userPosts, currentU, followers, following] = await Promise.all([
 				getUser({ data: username }),
@@ -186,7 +259,7 @@ function UserProfilePage() {
 				getFollowingCount({ data: username }),
 			]);
 			setUser(profileUser);
-			setPosts(userPosts);
+			setPosts(userPosts.filter((post): post is ProfilePost => Boolean(post.author)));
 			setCurrentUser(currentU);
 			setFollowerCount(followers);
 			setFollowingCount(following);
@@ -195,7 +268,11 @@ function UserProfilePage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [username]);
+
+	useEffect(() => {
+		void loadData();
+	}, [loadData]);
 
 	if (loading) {
 		return (
@@ -221,6 +298,30 @@ function UserProfilePage() {
 
 	const isOwnProfile = currentUser?.id === user.id;
 
+	const handleFriendRequest = async () => {
+		setActionLoading(true);
+		try {
+			await sendFriendRequest({ data: username });
+			alert("Friend request sent");
+		} catch (error) {
+			alert(error instanceof Error ? error.message : "Failed to send friend request");
+		} finally {
+			setActionLoading(false);
+		}
+	};
+
+	const handleMessage = async () => {
+		setActionLoading(true);
+		try {
+			const conversation = await getOrCreateConversation({ data: user.id });
+			window.location.href = `/messages?conversationId=${encodeURIComponent(conversation.id)}`;
+		} catch (error) {
+			alert(error instanceof Error ? error.message : "Failed to open messages");
+		} finally {
+			setActionLoading(false);
+		}
+	};
+
 	return (
 		<div {...stylex.props(styles.container)}>
 			{/* Profile Header Card */}
@@ -234,7 +335,36 @@ function UserProfilePage() {
 						<div {...stylex.props(styles.avatarRing)}>
 							<UserAvatar avatarUrl={user.avatarUrl} username={user.username} size="lg" />
 						</div>
-						{!isOwnProfile && currentUser && <FollowButton username={username} />}
+						{!isOwnProfile && currentUser && (
+							<div {...stylex.props(styles.profileActions)}>
+								<FollowButton username={username} />
+								<button
+									type="button"
+									onClick={handleFriendRequest}
+									disabled={actionLoading}
+									{...stylex.props(styles.actionButton)}
+								>
+									<UserPlus size={16} />
+									Friend
+								</button>
+								<button
+									type="button"
+									onClick={handleMessage}
+									disabled={actionLoading}
+									{...stylex.props(styles.actionButton)}
+								>
+									<MessageSquare size={16} />
+									Message
+								</button>
+								<div {...stylex.props(styles.reportAction)}>
+									<ReportButton
+										targetType="user"
+										targetId={user.id}
+										targetLabel={`@${user.username}`}
+									/>
+								</div>
+							</div>
+						)}
 					</div>
 
 					{/* User Info */}
@@ -257,6 +387,8 @@ function UserProfilePage() {
 							<span {...stylex.props(styles.statLabel)}>Followers</span>
 						</div>
 					</div>
+
+					<UserBadges userId={user.id} isOwnProfile={isOwnProfile} />
 				</div>
 			</div>
 

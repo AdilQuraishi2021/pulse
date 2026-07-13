@@ -4,11 +4,15 @@
 import type {
 	AuditLogsResponse,
 	AuthResponse,
+	BadgesResponse,
 	BanUserRequest,
 	BanUserResponse,
+	BasicResponse,
 	BookmarkResponse,
 	BookmarkStatusResponse,
 	CommentsResponse,
+	ConversationResponse,
+	ConversationsResponse,
 	CountResponse,
 	// Comments
 	CreateCommentRequest,
@@ -16,6 +20,8 @@ import type {
 	// Posts
 	CreatePostRequest,
 	CreatePostResponse,
+	CreateReportRequest,
+	CreateReportResponse,
 	DashboardStatsResponse,
 	DeleteCommentAdminRequest,
 	DeleteCommentAdminResponse,
@@ -31,10 +37,14 @@ import type {
 	DeleteUserResponse,
 	FollowResponse,
 	FollowStatusResponse,
+	FriendRequestActionRequest,
+	FriendRequestDecisionRequest,
+	FriendRequestResponse,
 	GetAuditLogsRequest,
 	GetBookmarkedPostsRequest,
 	GetBookmarkStatusRequest,
 	GetCommentLikeStatusRequest,
+	GetConversationsRequest,
 	GetCountRequest,
 	GetCurrentUserRequest,
 	GetDashboardStatsRequest,
@@ -43,16 +53,21 @@ import type {
 	// Feed
 	GetHomeFeedRequest,
 	GetLikeStatusRequest,
+	GetMessagesRequest,
 	// Notifications
 	GetNotificationsRequest,
 	GetNotificationsResponse,
+	GetOrCreateConversationRequest,
 	GetPostCommentsRequest,
+	GetPostReactionsRequest,
 	GetPostRequest,
 	GetPostsRequest,
 	GetRankedFeedRequest,
 	GetReportRequest,
+	GetShareCountRequest,
 	GetUnreadCountRequest,
 	GetUnreadCountResponse,
+	GetUserBadgesRequest,
 	GetUserDetailsRequest,
 	GetUserPostsRequest,
 	// Users
@@ -73,15 +88,29 @@ import type {
 	MarkAllAsReadResponse,
 	MarkAsReadRequest,
 	MarkAsReadResponse,
+	MarkConversationReadRequest,
+	MessageResponse,
+	MessagesResponse,
 	PostResponse,
 	PostsResponse,
+	ReactionCountsResponse,
+	ReactionResponse,
+	ReactToCommentRequest,
+	ReactToPostRequest,
+	RecalculateBadgesRequest,
 	// Auth
 	RegisterRequest,
 	ReportResponse,
+	RepostRequest,
+	RepostResponse,
 	ReviewReportRequest,
 	ReviewReportResponse,
 	// Search
 	SearchRequest,
+	SendMessageRequest,
+	ShareCountResponse,
+	SharePostRequest,
+	SharePostResponse,
 	// Bookmarks
 	ToggleBookmarkRequest,
 	ToggleCommentLikeRequest,
@@ -98,6 +127,8 @@ import type {
 	UpdateUserRoleRequest,
 	UpdateUserRoleResponse,
 	UserDetailsResponse,
+	UserListRequest,
+	UserListResponse,
 	UserProfileResponse,
 	UserResponse,
 	UsersResponse,
@@ -136,12 +167,20 @@ export interface ICommentsService {
 	deleteComment(request: DeleteCommentRequest): Promise<DeleteCommentResponse>;
 }
 
+// Reports Service Handler
+export interface IReportsService {
+	createReport(request: CreateReportRequest): Promise<CreateReportResponse>;
+}
+
 // Likes Service Handler
 export interface ILikesService {
 	togglePostLike(request: TogglePostLikeRequest): Promise<LikeResponse>;
 	toggleCommentLike(request: ToggleCommentLikeRequest): Promise<LikeResponse>;
 	getPostLikeStatus(request: GetLikeStatusRequest): Promise<LikeStatusResponse>;
 	getCommentLikeStatus(request: GetCommentLikeStatusRequest): Promise<LikeStatusResponse>;
+	reactToPost(request: ReactToPostRequest): Promise<ReactionResponse>;
+	reactToComment(request: ReactToCommentRequest): Promise<ReactionResponse>;
+	getPostReactions(request: GetPostReactionsRequest): Promise<ReactionCountsResponse>;
 }
 
 // Follows Service Handler
@@ -150,6 +189,12 @@ export interface IFollowsService {
 	getFollowStatus(request: GetFollowStatusRequest): Promise<FollowStatusResponse>;
 	getFollowerCount(request: GetCountRequest): Promise<CountResponse>;
 	getFollowingCount(request: GetCountRequest): Promise<CountResponse>;
+	sendFriendRequest(request: FriendRequestActionRequest): Promise<FriendRequestResponse>;
+	acceptFriendRequest(request: FriendRequestDecisionRequest): Promise<FriendRequestResponse>;
+	rejectFriendRequest(request: FriendRequestDecisionRequest): Promise<FriendRequestResponse>;
+	getFollowers(request: UserListRequest): Promise<UserListResponse>;
+	getFollowing(request: UserListRequest): Promise<UserListResponse>;
+	getFriends(request: UserListRequest): Promise<UserListResponse>;
 }
 
 // Feed Service Handler
@@ -202,4 +247,18 @@ export interface IBookmarksService {
 	toggleBookmark(request: ToggleBookmarkRequest): Promise<BookmarkResponse>;
 	getBookmarkStatus(request: GetBookmarkStatusRequest): Promise<BookmarkStatusResponse>;
 	getBookmarkedPosts(request: GetBookmarkedPostsRequest): Promise<PostsResponse>;
+}
+
+// Social Service Handler
+export interface ISocialService {
+	sharePost(request: SharePostRequest): Promise<SharePostResponse>;
+	repost(request: RepostRequest): Promise<RepostResponse>;
+	getShareCount(request: GetShareCountRequest): Promise<ShareCountResponse>;
+	getOrCreateConversation(request: GetOrCreateConversationRequest): Promise<ConversationResponse>;
+	getConversations(request: GetConversationsRequest): Promise<ConversationsResponse>;
+	sendMessage(request: SendMessageRequest): Promise<MessageResponse>;
+	getMessages(request: GetMessagesRequest): Promise<MessagesResponse>;
+	markConversationRead(request: MarkConversationReadRequest): Promise<BasicResponse>;
+	getUserBadges(request: GetUserBadgesRequest): Promise<BadgesResponse>;
+	recalculateBadges(request: RecalculateBadgesRequest): Promise<BadgesResponse>;
 }

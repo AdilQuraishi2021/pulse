@@ -27,6 +27,8 @@ vi.mock("../src/db", async () => {
 			banned_at INTEGER,
 			banned_reason TEXT,
 			banned_by TEXT,
+			is_online INTEGER NOT NULL DEFAULT 0,
+			last_seen INTEGER,
 			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 			updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 		)
@@ -59,9 +61,22 @@ vi.mock("../src/db", async () => {
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			post_id TEXT REFERENCES posts(id) ON DELETE CASCADE,
 			comment_id TEXT REFERENCES comments(id) ON DELETE CASCADE,
+			reaction_type TEXT NOT NULL DEFAULT 'like',
 			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 			UNIQUE(user_id, post_id),
 			UNIQUE(user_id, comment_id)
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS friend_requests (
+			id TEXT PRIMARY KEY,
+			requester_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			recipient_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+			updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+			UNIQUE(requester_id, recipient_id)
 		)
 	`);
 
@@ -72,6 +87,26 @@ vi.mock("../src/db", async () => {
 			following_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 			UNIQUE(follower_id, following_id)
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS shares (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+			destination TEXT NOT NULL DEFAULT 'external',
+			created_at INTEGER NOT NULL DEFAULT (unixepoch())
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS reposts (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+			quote TEXT,
+			created_at INTEGER NOT NULL DEFAULT (unixepoch())
 		)
 	`);
 
@@ -126,6 +161,57 @@ vi.mock("../src/db", async () => {
 		)
 	`);
 
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS conversations (
+			id TEXT PRIMARY KEY,
+			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+			updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS conversation_participants (
+			id TEXT PRIMARY KEY,
+			conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			last_read_at INTEGER,
+			created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+			UNIQUE(conversation_id, user_id)
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS messages (
+			id TEXT PRIMARY KEY,
+			conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+			sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			content TEXT NOT NULL,
+			read_at INTEGER,
+			created_at INTEGER NOT NULL DEFAULT (unixepoch())
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS badges (
+			id TEXT PRIMARY KEY,
+			code TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			description TEXT NOT NULL,
+			threshold INTEGER,
+			created_at INTEGER NOT NULL DEFAULT (unixepoch())
+		)
+	`);
+
+	await client.execute(`
+		CREATE TABLE IF NOT EXISTS user_badges (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			badge_id TEXT NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
+			awarded_at INTEGER NOT NULL DEFAULT (unixepoch()),
+			UNIQUE(user_id, badge_id)
+		)
+	`);
+
 	return { db, schema, client };
 });
 
@@ -139,14 +225,23 @@ beforeEach(async (context) => {
 	}
 
 	const { client } = await import("../src/db");
+	const testClient = client as { execute: (statement: string) => Promise<unknown> };
 	// Clear all tables in reverse order of dependencies
-	await (client as any).execute("DELETE FROM audit_logs");
-	await (client as any).execute("DELETE FROM reports");
-	await (client as any).execute("DELETE FROM notifications");
-	await (client as any).execute("DELETE FROM bookmarks");
-	await (client as any).execute("DELETE FROM follows");
-	await (client as any).execute("DELETE FROM likes");
-	await (client as any).execute("DELETE FROM comments");
-	await (client as any).execute("DELETE FROM posts");
-	await (client as any).execute("DELETE FROM users");
+	await testClient.execute("DELETE FROM user_badges");
+	await testClient.execute("DELETE FROM badges");
+	await testClient.execute("DELETE FROM messages");
+	await testClient.execute("DELETE FROM conversation_participants");
+	await testClient.execute("DELETE FROM conversations");
+	await testClient.execute("DELETE FROM audit_logs");
+	await testClient.execute("DELETE FROM reports");
+	await testClient.execute("DELETE FROM notifications");
+	await testClient.execute("DELETE FROM reposts");
+	await testClient.execute("DELETE FROM shares");
+	await testClient.execute("DELETE FROM bookmarks");
+	await testClient.execute("DELETE FROM friend_requests");
+	await testClient.execute("DELETE FROM follows");
+	await testClient.execute("DELETE FROM likes");
+	await testClient.execute("DELETE FROM comments");
+	await testClient.execute("DELETE FROM posts");
+	await testClient.execute("DELETE FROM users");
 });

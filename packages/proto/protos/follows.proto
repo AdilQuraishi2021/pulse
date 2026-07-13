@@ -6,6 +6,12 @@ service FollowsService {
   rpc GetFollowStatus(GetFollowStatusRequest) returns (FollowStatusResponse);
   rpc GetFollowerCount(GetCountRequest) returns (CountResponse);
   rpc GetFollowingCount(GetCountRequest) returns (CountResponse);
+  rpc SendFriendRequest(FriendRequestActionRequest) returns (FriendRequestResponse);
+  rpc AcceptFriendRequest(FriendRequestDecisionRequest) returns (FriendRequestResponse);
+  rpc RejectFriendRequest(FriendRequestDecisionRequest) returns (FriendRequestResponse);
+  rpc GetFollowers(UserListRequest) returns (UserListResponse);
+  rpc GetFollowing(UserListRequest) returns (UserListResponse);
+  rpc GetFriends(UserListRequest) returns (UserListResponse);
 }
 
 message ToggleFollowRequest {
@@ -34,4 +40,40 @@ message GetCountRequest {
 
 message CountResponse {
   int32 count = 1;
+}
+
+message FriendRequestActionRequest {
+  string session_token = 1;
+  string username = 2;
+}
+
+message FriendRequestDecisionRequest {
+  string session_token = 1;
+  string request_id = 2;
+}
+
+message FriendRequestResponse {
+  bool success = 1;
+  string request_id = 2;
+  string status = 3;
+  optional string error = 4;
+}
+
+message UserListRequest {
+  string username = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message SocialUser {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  optional string avatar_url = 4;
+  bool is_online = 5;
+  optional string last_seen = 6;
+}
+
+message UserListResponse {
+  repeated SocialUser users = 1;
 }

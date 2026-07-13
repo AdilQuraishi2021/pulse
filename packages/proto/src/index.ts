@@ -31,9 +31,15 @@ export * from "../generated/notifications.client";
 // Posts
 export * from "../generated/posts";
 export * from "../generated/posts.client";
+// Reports
+export * from "../generated/reports";
+export * from "../generated/reports.client";
 // Search
 export * from "../generated/search";
 export * from "../generated/search.client";
+// Social
+export * from "../generated/social";
+export * from "../generated/social.client";
 // Users
 export * from "../generated/users";
 export * from "../generated/users.client";

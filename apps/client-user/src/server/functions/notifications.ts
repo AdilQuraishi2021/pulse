@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { fromProtoTimestamp, getGrpcClient, requireGrpcSessionToken } from "../../lib/grpc.server";
+import {
+	fromProtoTimestamp,
+	getGrpcClient,
+	getGrpcSessionToken,
+	requireGrpcSessionToken,
+} from "../../lib/grpc.server";
 
 export const getNotifications = createServerFn()
 	.inputValidator((d: { limit?: number; offset?: number }) => d)
@@ -27,14 +32,31 @@ export const getNotifications = createServerFn()
 	});
 
 export const getUnreadCount = createServerFn().handler(async () => {
-	const sessionToken = await requireGrpcSessionToken();
-	const client = getGrpcClient();
+	const sessionToken = await getGrpcSessionToken();
+	if (!sessionToken) {
+		return 0;
+	}
 
-	const { response } = await client.notifications.getUnreadCount({
-		sessionToken,
-	});
+	try {
+		const client = getGrpcClient();
 
-	return response.count;
+		const { response } = await client.notifications.getUnreadCount({
+			sessionToken,
+		});
+
+		return response.count;
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			(error.message.includes("ECONNREFUSED") ||
+				error.message.includes("No connection established") ||
+				error.message.includes("Connection dropped"))
+		) {
+			return 0;
+		}
+
+		throw error;
+	}
 });
 
 export const markAsRead = createServerFn({ method: "POST" })

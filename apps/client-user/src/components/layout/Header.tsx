@@ -7,6 +7,7 @@ import {
 	LogIn,
 	LogOut,
 	MessageCircle,
+	MessageSquare,
 	Search,
 	UserPlus,
 } from "lucide-react";
@@ -312,6 +313,14 @@ export function Header() {
 						>
 							<Bookmark size={20} />
 							<span {...stylex.props(styles.navLinkText)}>Bookmarks</span>
+						</Link>
+
+						<Link
+							to="/messages"
+							{...stylex.props(styles.navLink, isActive("/messages") && styles.navLinkActive)}
+						>
+							<MessageSquare size={20} />
+							<span {...stylex.props(styles.navLinkText)}>Messages</span>
 						</Link>
 					</nav>
 

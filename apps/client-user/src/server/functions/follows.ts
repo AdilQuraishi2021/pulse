@@ -56,3 +56,24 @@ export const getFollowingCount = createServerFn()
 
 		return response.count;
 	});
+
+export const sendFriendRequest = createServerFn({ method: "POST" })
+	.inputValidator((d: string) => d)
+	.handler(async ({ data: username }) => {
+		const sessionToken = await requireGrpcSessionToken();
+		const client = getGrpcClient();
+
+		const { response } = await client.follows.sendFriendRequest({
+			sessionToken,
+			username,
+		});
+
+		if (!response.success) {
+			throw new Error(response.error || "Failed to send friend request");
+		}
+
+		return {
+			requestId: response.requestId,
+			status: response.status,
+		};
+	});

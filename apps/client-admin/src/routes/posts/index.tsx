@@ -1,7 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Eye, Flag, Heart, MessageSquare, Search, Trash2, User } from "lucide-react";
+import { Eye, Heart, MessageSquare, Search, Trash2, User } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAdminAccess } from "../../lib/auth-guard";
+import { deleteAdminPost, listAdminPosts } from "../../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../../tokens.stylex";
 
 const styles = stylex.create({
@@ -168,6 +170,11 @@ const styles = stylex.create({
 		color: colors.yellow500,
 		fontSize: "0.75rem",
 	},
+	emptyState: {
+		textAlign: "center",
+		color: semanticColors.textTertiary,
+		paddingBlock: spacing.xl,
+	},
 });
 
 export const Route = createFileRoute("/posts/")({
@@ -175,67 +182,72 @@ export const Route = createFileRoute("/posts/")({
 	component: PostsPage,
 });
 
-const mockPosts = [
-	{
-		id: "1",
-		author: { id: "1", username: "alice", displayName: "Alice Johnson" },
-		content:
-			"Just deployed my first full-stack app with gRPC and TypeScript. The type safety across the entire stack is incredible!",
-		likes: 3,
-		comments: 2,
-		reports: 0,
-		createdAt: "30 minutes ago",
-	},
-	{
-		id: "2",
-		author: { id: "2", username: "bob", displayName: "Bob Smith" },
-		content:
-			"Morning coffee and code reviews. There is something peaceful about reading clean, well-structured code early in the day.",
-		likes: 2,
-		comments: 1,
-		reports: 0,
-		createdAt: "1 hour ago",
-	},
-	{
-		id: "3",
-		author: { id: "1", username: "alice", displayName: "Alice Johnson" },
-		content:
-			"Hot take: monorepos are the way to go for any team project. Shared packages, consistent tooling, and atomic changes across services.",
-		likes: 2,
-		comments: 1,
-		reports: 0,
-		createdAt: "2 hours ago",
-	},
-	{
-		id: "4",
-		author: { id: "3", username: "charlie", displayName: "Charlie Brown" },
-		content:
-			"Finally wrapped my head around Protocol Buffers. The schema-first approach to API design changes everything.",
-		likes: 2,
-		comments: 1,
-		reports: 0,
-		createdAt: "3 hours ago",
-	},
-	{
-		id: "5",
-		author: { id: "4", username: "diana", displayName: "Diana Ross" },
-		content: "Spent the weekend learning StyleX. CSS-in-JS with zero runtime cost? Sign me up.",
-		likes: 2,
-		comments: 1,
-		reports: 0,
-		createdAt: "5 hours ago",
-	},
-];
+interface AdminPost {
+	id: string;
+	author: { id: string; username: string; displayName: string };
+	content: string;
+	likeCount: number;
+	commentCount: number;
+	createdAt: string;
+}
 
 function PostsPage() {
+	const [posts, setPosts] = useState<AdminPost[]>([]);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [filter, setFilter] = useState("all");
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadPosts = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			setPosts(await listAdminPosts());
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load posts");
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		loadPosts();
+	}, [loadPosts]);
+
+	const visiblePosts = useMemo(() => {
+		const query = searchQuery.trim().toLowerCase();
+		return posts
+			.filter((post) =>
+				query
+					? post.content.toLowerCase().includes(query) ||
+						post.author.username.toLowerCase().includes(query)
+					: true,
+			)
+			.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+	}, [posts, searchQuery]);
+
+	const handleDelete = async (post: AdminPost) => {
+		const reason = window.prompt("Reason for deleting this post?", "Content policy violation");
+		if (!reason) return;
+		try {
+			await deleteAdminPost({ data: { postId: post.id, reason } });
+			await loadPosts();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete post");
+		}
+	};
+
 	return (
 		<main {...stylex.props(styles.container)}>
 			<header {...stylex.props(styles.header)}>
 				<h1 {...stylex.props(styles.title)}>Posts</h1>
 				<div {...stylex.props(styles.filters)}>
-					<select {...stylex.props(styles.filterSelect)}>
+					<select
+						value={filter}
+						onChange={(event) => setFilter(event.target.value)}
+						{...stylex.props(styles.filterSelect)}
+					>
 						<option value="all">All Posts</option>
-						<option value="reported">Reported Only</option>
 						<option value="recent">Most Recent</option>
 					</select>
 					<div {...stylex.props(styles.searchContainer)}>
@@ -243,6 +255,8 @@ function PostsPage() {
 						<input
 							type="text"
 							placeholder="Search posts..."
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
 							{...stylex.props(styles.searchInput)}
 						/>
 					</div>
@@ -250,58 +264,66 @@ function PostsPage() {
 			</header>
 
 			<div {...stylex.props(styles.postsList)}>
-				{mockPosts.map((post) => (
-					<article key={post.id} {...stylex.props(styles.postCard)}>
-						<div {...stylex.props(styles.postHeader)}>
-							<div {...stylex.props(styles.authorSection)}>
-								<div {...stylex.props(styles.avatar)}>
-									<User size={20} />
+				{error && <p {...stylex.props(styles.emptyState)}>{error}</p>}
+				{isLoading ? (
+					<p {...stylex.props(styles.emptyState)}>Loading posts...</p>
+				) : visiblePosts.length === 0 ? (
+					<p {...stylex.props(styles.emptyState)}>No posts found.</p>
+				) : (
+					visiblePosts.map((post) => (
+						<article key={post.id} {...stylex.props(styles.postCard)}>
+							<div {...stylex.props(styles.postHeader)}>
+								<div {...stylex.props(styles.authorSection)}>
+									<div {...stylex.props(styles.avatar)}>
+										<User size={20} />
+									</div>
+									<div {...stylex.props(styles.authorInfo)}>
+										<Link
+											to="/users/$userId"
+											params={{ userId: post.author.id }}
+											{...stylex.props(styles.authorName)}
+										>
+											{post.author.displayName}
+										</Link>
+										<span {...stylex.props(styles.authorHandle)}>@{post.author.username}</span>
+									</div>
 								</div>
-								<div {...stylex.props(styles.authorInfo)}>
+								<div {...stylex.props(styles.postActions)}>
 									<Link
-										to="/users/$userId"
-										params={{ userId: post.author.id }}
-										{...stylex.props(styles.authorName)}
+										to="/posts/$postId"
+										params={{ postId: post.id }}
+										{...stylex.props(styles.actionButton)}
 									>
-										{post.author.displayName}
+										<Eye size={16} />
 									</Link>
-									<span {...stylex.props(styles.authorHandle)}>@{post.author.username}</span>
+									<button
+										type="button"
+										onClick={() => handleDelete(post)}
+										{...stylex.props(styles.actionButton, styles.deleteButton)}
+									>
+										<Trash2 size={16} />
+									</button>
 								</div>
 							</div>
-							<div {...stylex.props(styles.postActions)}>
-								<Link
-									to="/posts/$postId"
-									params={{ postId: post.id }}
-									{...stylex.props(styles.actionButton)}
-								>
-									<Eye size={16} />
-								</Link>
-								<button type="button" {...stylex.props(styles.actionButton, styles.deleteButton)}>
-									<Trash2 size={16} />
-								</button>
-							</div>
-						</div>
 
-						<p {...stylex.props(styles.postContent)}>{post.content}</p>
+							<p {...stylex.props(styles.postContent)}>{post.content}</p>
 
-						<div {...stylex.props(styles.postFooter)}>
-							<div {...stylex.props(styles.postStats)}>
-								<span {...stylex.props(styles.stat)}>
-									<Heart size={14} /> {post.likes}
-								</span>
-								<span {...stylex.props(styles.stat)}>
-									<MessageSquare size={14} /> {post.comments}
-								</span>
-								{post.reports > 0 && (
-									<span {...stylex.props(styles.flagged)}>
-										<Flag size={14} /> {post.reports} reports
+							<div {...stylex.props(styles.postFooter)}>
+								<div {...stylex.props(styles.postStats)}>
+									<span {...stylex.props(styles.stat)}>
+										<Heart size={14} /> {post.likeCount}
 									</span>
-								)}
+									<span {...stylex.props(styles.stat)}>
+										<MessageSquare size={14} /> {post.commentCount}
+									</span>
+								</div>
+								<span {...stylex.props(styles.postTime)}>
+									{new Date(post.createdAt).toLocaleString()}
+								</span>
 							</div>
-							<span {...stylex.props(styles.postTime)}>{post.createdAt}</span>
-						</div>
-					</article>
-				))}
+						</article>
+					))
+				)}
 			</div>
 		</main>
 	);

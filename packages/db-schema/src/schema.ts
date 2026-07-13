@@ -1,5 +1,6 @@
 import {
 	boolean,
+	int,
 	mysqlEnum,
 	mysqlTable,
 	text,
@@ -25,6 +26,8 @@ export const users = mysqlTable("users", {
 	bannedAt: timestamp("banned_at"),
 	bannedReason: text("banned_reason"),
 	bannedBy: id("banned_by"),
+	isOnline: boolean("is_online").notNull().default(false),
+	lastSeen: timestamp("last_seen"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at")
 		.notNull()
@@ -71,11 +74,36 @@ export const likes = mysqlTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		postId: id("post_id").references(() => posts.id, { onDelete: "cascade" }),
 		commentId: id("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+		reactionType: mysqlEnum("reaction_type", ["like", "love", "celebrate", "support", "funny"])
+			.notNull()
+			.default("like"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => ({
 		uniquePostLike: unique().on(table.userId, table.postId),
 		uniqueCommentLike: unique().on(table.userId, table.commentId),
+	}),
+);
+
+export const friendRequests = mysqlTable(
+	"friend_requests",
+	{
+		id: id("id").primaryKey(),
+		requesterId: id("requester_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		recipientId: id("recipient_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		status: mysqlEnum("status", ["pending", "accepted", "rejected"]).notNull().default("pending"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at")
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => new Date()),
+	},
+	(table) => ({
+		uniqueFriendRequest: unique().on(table.requesterId, table.recipientId),
 	}),
 );
 
@@ -114,6 +142,30 @@ export const bookmarks = mysqlTable(
 		uniqueBookmark: unique().on(table.userId, table.postId),
 	}),
 );
+
+export const shares = mysqlTable("shares", {
+	id: id("id").primaryKey(),
+	userId: id("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	postId: id("post_id")
+		.notNull()
+		.references(() => posts.id, { onDelete: "cascade" }),
+	destination: mysqlEnum("destination", ["external", "pulse"]).notNull().default("external"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const reposts = mysqlTable("reposts", {
+	id: id("id").primaryKey(),
+	userId: id("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	postId: id("post_id")
+		.notNull()
+		.references(() => posts.id, { onDelete: "cascade" }),
+	quote: text("quote"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 // Notifications table
 export const notifications = mysqlTable("notifications", {
@@ -163,6 +215,72 @@ export const auditLogs = mysqlTable("audit_logs", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const conversations = mysqlTable("conversations", {
+	id: id("id").primaryKey(),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at")
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => new Date()),
+});
+
+export const conversationParticipants = mysqlTable(
+	"conversation_participants",
+	{
+		id: id("id").primaryKey(),
+		conversationId: id("conversation_id")
+			.notNull()
+			.references(() => conversations.id, { onDelete: "cascade" }),
+		userId: id("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		lastReadAt: timestamp("last_read_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		uniqueParticipant: unique().on(table.conversationId, table.userId),
+	}),
+);
+
+export const messages = mysqlTable("messages", {
+	id: id("id").primaryKey(),
+	conversationId: id("conversation_id")
+		.notNull()
+		.references(() => conversations.id, { onDelete: "cascade" }),
+	senderId: id("sender_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	content: text("content").notNull(),
+	readAt: timestamp("read_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const badges = mysqlTable("badges", {
+	id: id("id").primaryKey(),
+	code: varchar("code", { length: 64 }).notNull().unique(),
+	name: varchar("name", { length: 128 }).notNull(),
+	description: text("description").notNull(),
+	threshold: int("threshold"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userBadges = mysqlTable(
+	"user_badges",
+	{
+		id: id("id").primaryKey(),
+		userId: id("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		badgeId: id("badge_id")
+			.notNull()
+			.references(() => badges.id, { onDelete: "cascade" }),
+		awardedAt: timestamp("awarded_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		uniqueUserBadge: unique().on(table.userId, table.badgeId),
+	}),
+);
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -174,14 +292,30 @@ export type Like = typeof likes.$inferSelect;
 export type InsertLike = typeof likes.$inferInsert;
 export type Follow = typeof follows.$inferSelect;
 export type InsertFollow = typeof follows.$inferInsert;
+export type FriendRequest = typeof friendRequests.$inferSelect;
+export type InsertFriendRequest = typeof friendRequests.$inferInsert;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = typeof bookmarks.$inferInsert;
+export type Share = typeof shares.$inferSelect;
+export type InsertShare = typeof shares.$inferInsert;
+export type Repost = typeof reposts.$inferSelect;
+export type InsertRepost = typeof reposts.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = typeof reports.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+export type ConversationParticipant = typeof conversationParticipants.$inferSelect;
+export type InsertConversationParticipant = typeof conversationParticipants.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type Badge = typeof badges.$inferSelect;
+export type InsertBadge = typeof badges.$inferInsert;
+export type UserBadge = typeof userBadges.$inferSelect;
+export type InsertUserBadge = typeof userBadges.$inferInsert;
 
 // Role type
 export type UserRole = "user" | "admin" | "moderator";

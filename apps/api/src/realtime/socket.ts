@@ -1,4 +1,4 @@
-import type { Server as HttpServer } from "node:http";
+import { createServer } from "node:http";
 import { Server } from "socket.io";
 
 type ActivityScope = {
@@ -13,6 +13,39 @@ type ActivityPayload = ActivityScope & {
 
 let io: Server | null = null;
 const onlineUsers = new Map<string, number>();
+
+const DEFAULT_CLIENT_ORIGINS = [
+	"http://localhost:3000",
+	"http://127.0.0.1:3000",
+	"http://localhost:3002",
+	"http://127.0.0.1:3002",
+];
+
+function allowedClientOrigins() {
+	const configuredOrigins = process.env.CLIENT_ORIGIN?.split(",")
+		.map((origin) => origin.trim())
+		.filter(Boolean);
+
+	return configuredOrigins?.length ? configuredOrigins : DEFAULT_CLIENT_ORIGINS;
+}
+
+function setRealtimeCorsHeaders(
+	requestOrigin: string | undefined,
+	headers: Record<string, string>,
+) {
+	const origins = allowedClientOrigins();
+	const allowedOrigin =
+		process.env.NODE_ENV === "production"
+			? origins.find((origin) => origin === requestOrigin)
+			: requestOrigin || origins[0];
+
+	if (allowedOrigin) {
+		headers["Access-Control-Allow-Origin"] = allowedOrigin;
+	}
+	headers["Access-Control-Allow-Credentials"] = "true";
+	headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
+	headers["Access-Control-Allow-Headers"] = "Content-Type";
+}
 
 function userRoom(userId: string) {
 	return `user:${userId}`;
@@ -49,13 +82,44 @@ function setUserPresence(userId: string, isOnline: boolean) {
 
 	if (statusChanged) {
 		io.emit("presence:update", { userId, online: isOnline });
+		io.emit(isOnline ? "user:online" : "user:offline", {
+			userId,
+			isOnline,
+			lastSeen: isOnline ? undefined : new Date().toISOString(),
+		});
 	}
 }
 
-export function initializeSocketServer(httpServer: HttpServer) {
+export function initializeSocketServer(port: number) {
+	const origins = allowedClientOrigins();
+	const httpServer = createServer((req, res) => {
+		const headers: Record<string, string> = {};
+		setRealtimeCorsHeaders(req.headers.origin, headers);
+
+		if (req.method === "OPTIONS") {
+			res.writeHead(204, headers);
+			res.end();
+			return;
+		}
+
+		if (req.url === "/health") {
+			res.writeHead(200, {
+				...headers,
+				"Content-Type": "application/json",
+			});
+			res.end(JSON.stringify({ status: "ok", socket: true }));
+			return;
+		}
+
+		res.writeHead(404, headers);
+		res.end();
+	});
+
 	io = new Server(httpServer, {
 		cors: {
-			origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+			origin: process.env.NODE_ENV === "production" ? origins : true,
+			methods: ["GET", "POST"],
+			allowedHeaders: ["Content-Type"],
 			credentials: true,
 		},
 	});
@@ -84,12 +148,14 @@ export function initializeSocketServer(httpServer: HttpServer) {
 		socket.on("typing:start", ({ postId }: { postId?: string }) => {
 			if (userId && postId) {
 				socket.to(postRoom(postId)).emit("typing:update", { userId, postId, typing: true });
+				socket.to(postRoom(postId)).emit("typing:start", { userId, postId });
 			}
 		});
 
 		socket.on("typing:stop", ({ postId }: { postId?: string }) => {
 			if (userId && postId) {
 				socket.to(postRoom(postId)).emit("typing:update", { userId, postId, typing: false });
+				socket.to(postRoom(postId)).emit("typing:stop", { userId, postId });
 			}
 		});
 
@@ -97,12 +163,14 @@ export function initializeSocketServer(httpServer: HttpServer) {
 			"chat:message",
 			({ recipientId, message }: { recipientId?: string; message?: string }) => {
 				if (userId && recipientId && message) {
-					io?.to(userRoom(recipientId)).emit("chat:message", {
+					const payload = {
 						senderId: userId,
 						recipientId,
 						message,
 						createdAt: new Date().toISOString(),
-					});
+					};
+					io?.to(userRoom(recipientId)).emit("chat:message", payload);
+					io?.to(userRoom(recipientId)).emit("message:new", payload);
 				}
 			},
 		);
@@ -114,6 +182,7 @@ export function initializeSocketServer(httpServer: HttpServer) {
 		});
 	});
 
+	httpServer.listen(port);
 	return io;
 }
 
@@ -130,18 +199,36 @@ export function emitPostEvent(type: "created" | "updated" | "deleted", payload: 
 export function emitCommentEvent(type: "created" | "deleted", payload: ActivityPayload) {
 	if (payload.postId) {
 		io?.to(postRoom(payload.postId)).emit(`comment:${type}`, payload);
+		io?.to(postRoom(payload.postId)).emit(
+			type === "created" ? "comment:new" : "comment:delete",
+			payload,
+		);
 	}
 	emitActivity({ ...payload, type: `comment:${type}` });
 }
 
 export function emitLikeEvent(payload: ActivityPayload) {
 	io?.emit("like:update", payload);
+	io?.emit("reaction:update", payload);
 	emitActivity({ ...payload, type: "like:update" });
 }
 
 export function emitFollowEvent(payload: ActivityPayload) {
 	io?.emit("follow:update", payload);
 	emitActivity({ ...payload, type: "follow:update" });
+}
+
+export function emitShareEvent(payload: ActivityPayload) {
+	io?.emit("share:update", payload);
+	emitActivity({ ...payload, type: "share:update" });
+}
+
+export function emitMessageEvent(userIds: string[], payload: Record<string, unknown>) {
+	for (const userId of userIds) {
+		io?.to(userRoom(userId)).emit("message:new", payload);
+		io?.to(userRoom(userId)).emit("chat:message", payload);
+	}
+	emitActivity({ ...payload, type: "message:new" });
 }
 
 export function emitAdminAnalytics(payload: Record<string, unknown>) {

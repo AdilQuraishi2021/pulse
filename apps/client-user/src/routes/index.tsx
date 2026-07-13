@@ -135,11 +135,15 @@ function HomePage() {
 				if (!options.silent) {
 					setLoading(true);
 				}
-				const [currentUser, feedPosts] = await Promise.all([
-					getCurrentUser(),
-					getRankedFeed({ data: { type: feedMode, filter: feedFilter } }),
-				]);
+				const currentUser = await getCurrentUser();
 				setUser(currentUser);
+
+				if (!currentUser) {
+					setPosts([]);
+					return;
+				}
+
+				const feedPosts = await getRankedFeed({ data: { type: feedMode, filter: feedFilter } });
 				setPosts(feedPosts);
 			} catch (error) {
 				console.error("Failed to load data:", error);

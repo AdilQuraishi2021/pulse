@@ -1,0 +1,20 @@
+syntax = "proto3";
+package chirp.reports;
+
+service ReportsService {
+  rpc CreateReport(CreateReportRequest) returns (CreateReportResponse);
+}
+
+message CreateReportRequest {
+  string session_token = 1;
+  string target_type = 2;
+  string target_id = 3;
+  string reason = 4;
+  optional string description = 5;
+}
+
+message CreateReportResponse {
+  bool success = 1;
+  string report_id = 2;
+  optional string error = 3;
+}

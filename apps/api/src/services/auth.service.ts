@@ -20,7 +20,7 @@ export interface LoginInput {
 export async function registerUser(input: RegisterInput) {
 	// Check if email already exists
 	const existingEmail = await db
-		.select()
+		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.email, input.email))
 		.then((rows) => rows[0]);
@@ -31,7 +31,7 @@ export async function registerUser(input: RegisterInput) {
 
 	// Check if username already exists
 	const existingUsername = await db
-		.select()
+		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.username, input.username))
 		.then((rows) => rows[0]);
@@ -67,7 +67,14 @@ export async function registerUser(input: RegisterInput) {
 export async function loginUser(input: LoginInput) {
 	// Find user by email
 	const user = await db
-		.select()
+		.select({
+			id: users.id,
+			username: users.username,
+			passwordHash: users.passwordHash,
+			role: users.role,
+			bannedAt: users.bannedAt,
+			bannedReason: users.bannedReason,
+		})
 		.from(users)
 		.where(eq(users.email, input.email))
 		.then((rows) => rows[0]);

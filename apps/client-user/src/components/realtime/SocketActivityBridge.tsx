@@ -16,7 +16,11 @@ export function SocketActivityBridge() {
 				return;
 			}
 
-			const socket = getSocket(user?.id);
+			if (!user?.id) {
+				return;
+			}
+
+			const socket = getSocket(user.id);
 			if (!socket) {
 				return;
 			}

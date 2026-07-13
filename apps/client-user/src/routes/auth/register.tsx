@@ -281,7 +281,7 @@ function RegisterPage() {
 		setLoading(true);
 
 		try {
-			await registerUser({
+			const result = await registerUser({
 				data: {
 					email: formData.email,
 					username: formData.username,
@@ -289,6 +289,10 @@ function RegisterPage() {
 					password: formData.password,
 				},
 			});
+			if (!result.success) {
+				setError(result.error || "Registration failed");
+				return;
+			}
 			navigate({ to: "/" });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Registration failed");

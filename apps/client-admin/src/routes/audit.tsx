@@ -12,7 +12,9 @@ import {
 	Trash2,
 	User,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAdminAccess } from "../lib/auth-guard";
+import { listAdminAuditLogs } from "../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../tokens.stylex";
 
 const styles = stylex.create({
@@ -206,6 +208,20 @@ const styles = stylex.create({
 	dateHeaderFirst: {
 		marginTop: 0,
 	},
+	emptyState: {
+		textAlign: "center",
+		color: semanticColors.textTertiary,
+		paddingBlock: spacing.xl,
+	},
+	filterSelect: {
+		paddingBlock: spacing.sm,
+		paddingInline: spacing.md,
+		borderRadius: radii.md,
+		border: `1px solid ${semanticColors.borderDefault}`,
+		backgroundColor: semanticColors.surfaceInput,
+		color: semanticColors.textPrimary,
+		fontSize: "0.875rem",
+	},
 });
 
 export const Route = createFileRoute("/audit")({
@@ -218,37 +234,46 @@ type AuditAction =
 	| "unban_user"
 	| "delete_post"
 	| "delete_comment"
-	| "change_role"
-	| "resolve_report";
+	| "delete_user"
+	| "update_role"
+	| "review_report"
+	| string;
 
-const mockAuditLogs = [
-	{
-		id: "1",
-		adminId: "1",
-		adminUsername: "admin",
-		action: "change_role" as AuditAction,
-		targetType: "user",
-		targetId: "6",
-		targetName: "@moderator",
-		details: "Assigned moderator role during platform setup",
-		createdAt: "1 hour ago",
-		date: "Today",
-	},
-	{
-		id: "2",
-		adminId: "1",
-		adminUsername: "admin",
-		action: "change_role" as AuditAction,
-		targetType: "user",
-		targetId: "5",
-		targetName: "@admin",
-		details: "Initial admin account configured",
-		createdAt: "2 hours ago",
-		date: "Today",
-	},
-];
+interface AuditLog {
+	id: string;
+	adminId: string;
+	adminUsername: string;
+	action: AuditAction;
+	targetType: string | null;
+	targetId: string | null;
+	details: string | null;
+	createdAt: string;
+}
 
 function AuditPage() {
+	const [logs, setLogs] = useState<AuditLog[]>([]);
+	const [actionFilter, setActionFilter] = useState("all");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadLogs = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const response = await listAdminAuditLogs({ data: { actionFilter } });
+			setLogs(response.logs);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load audit logs");
+		} finally {
+			setIsLoading(false);
+		}
+	}, [actionFilter]);
+
+	useEffect(() => {
+		loadLogs();
+	}, [loadLogs]);
+
 	const getActionIcon = (action: AuditAction) => {
 		switch (action) {
 			case "ban_user":
@@ -257,9 +282,9 @@ function AuditPage() {
 			case "delete_post":
 			case "delete_comment":
 				return Trash2;
-			case "change_role":
+			case "update_role":
 				return Shield;
-			case "resolve_report":
+			case "review_report":
 				return Check;
 			default:
 				return FileText;
@@ -272,9 +297,9 @@ function AuditPage() {
 			case "delete_post":
 			case "delete_comment":
 				return styles.logIconDelete;
-			case "change_role":
+			case "update_role":
 				return styles.logIconRole;
-			case "resolve_report":
+			case "review_report":
 				return styles.logIconResolve;
 			default:
 				return styles.logIconDefault;
@@ -291,10 +316,12 @@ function AuditPage() {
 				return "Deleted Post";
 			case "delete_comment":
 				return "Deleted Comment";
-			case "change_role":
+			case "update_role":
 				return "Changed Role";
-			case "resolve_report":
-				return "Resolved Report";
+			case "review_report":
+				return "Reviewed Report";
+			case "delete_user":
+				return "Deleted User";
 			default:
 				return action;
 		}
@@ -313,16 +340,27 @@ function AuditPage() {
 		}
 	};
 
-	// Group logs by date
-	const groupedLogs = mockAuditLogs.reduce(
+	const visibleLogs = useMemo(() => {
+		const query = searchQuery.trim().toLowerCase();
+		if (!query) return logs;
+		return logs.filter(
+			(log) =>
+				log.action.toLowerCase().includes(query) ||
+				log.adminUsername.toLowerCase().includes(query) ||
+				(log.details || "").toLowerCase().includes(query),
+		);
+	}, [logs, searchQuery]);
+
+	const groupedLogs = visibleLogs.reduce(
 		(acc, log) => {
-			if (!acc[log.date]) {
-				acc[log.date] = [];
+			const date = new Date(log.createdAt).toLocaleDateString();
+			if (!acc[date]) {
+				acc[date] = [];
 			}
-			acc[log.date].push(log);
+			acc[date].push(log);
 			return acc;
 		},
-		{} as Record<string, typeof mockAuditLogs>,
+		{} as Record<string, AuditLog[]>,
 	);
 
 	return (
@@ -330,78 +368,102 @@ function AuditPage() {
 			<header {...stylex.props(styles.header)}>
 				<h1 {...stylex.props(styles.title)}>Audit Log</h1>
 				<div {...stylex.props(styles.filters)}>
-					<button type="button" {...stylex.props(styles.filterButton)}>
+					<Filter size={16} />
+					<select
+						value={actionFilter}
+						onChange={(event) => setActionFilter(event.target.value)}
+						{...stylex.props(styles.filterSelect)}
+					>
+						<option value="all">All actions</option>
+						<option value="ban_user">Ban user</option>
+						<option value="unban_user">Unban user</option>
+						<option value="update_role">Role changes</option>
+						<option value="delete_user">Delete user</option>
+						<option value="delete_post">Delete post</option>
+						<option value="delete_comment">Delete comment</option>
+						<option value="review_report">Review report</option>
+					</select>
+					<button type="button" onClick={loadLogs} {...stylex.props(styles.filterButton)}>
 						<Filter size={16} />
-						Filter
+						Refresh
 					</button>
 					<div {...stylex.props(styles.searchContainer)}>
 						<Search size={16} {...stylex.props(styles.searchIcon)} />
-						<input type="text" placeholder="Search logs..." {...stylex.props(styles.searchInput)} />
+						<input
+							type="text"
+							placeholder="Search logs..."
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
+							{...stylex.props(styles.searchInput)}
+						/>
 					</div>
 				</div>
 			</header>
 
-			{Object.entries(groupedLogs).map(([date, logs], dateIndex) => (
-				<div key={date}>
-					<h2 {...stylex.props(styles.dateHeader, dateIndex === 0 && styles.dateHeaderFirst)}>
-						{date}
-					</h2>
-					<div {...stylex.props(styles.timeline)}>
-						<div {...stylex.props(styles.timelineLine)} />
-						{logs.map((log, index) => {
-							const ActionIcon = getActionIcon(log.action);
-							const TargetIcon = getTargetIcon(log.targetType);
-							const isLast = index === logs.length - 1;
+			{error && <p {...stylex.props(styles.emptyState)}>{error}</p>}
+			{isLoading ? (
+				<p {...stylex.props(styles.emptyState)}>Loading audit logs...</p>
+			) : Object.keys(groupedLogs).length === 0 ? (
+				<p {...stylex.props(styles.emptyState)}>No audit logs found.</p>
+			) : (
+				Object.entries(groupedLogs).map(([date, logs], dateIndex) => (
+					<div key={date}>
+						<h2 {...stylex.props(styles.dateHeader, dateIndex === 0 && styles.dateHeaderFirst)}>
+							{date}
+						</h2>
+						<div {...stylex.props(styles.timeline)}>
+							<div {...stylex.props(styles.timelineLine)} />
+							{logs.map((log, index) => {
+								const ActionIcon = getActionIcon(log.action);
+								const TargetIcon = getTargetIcon(log.targetType || "");
+								const isLast = index === logs.length - 1;
 
-							return (
-								<div key={log.id} {...stylex.props(styles.logEntry, isLast && styles.logEntryLast)}>
-									<div {...stylex.props(styles.logIcon, getIconStyle(log.action))}>
-										<ActionIcon size={12} />
-									</div>
-									<div {...stylex.props(styles.logCard)}>
-										<div {...stylex.props(styles.logHeader)}>
-											<span {...stylex.props(styles.logAction)}>{getActionLabel(log.action)}</span>
-											<span {...stylex.props(styles.logTime)}>
-												<Calendar size={12} />
-												{log.createdAt}
-											</span>
+								return (
+									<div
+										key={log.id}
+										{...stylex.props(styles.logEntry, isLast && styles.logEntryLast)}
+									>
+										<div {...stylex.props(styles.logIcon, getIconStyle(log.action))}>
+											<ActionIcon size={12} />
 										</div>
-										<p {...stylex.props(styles.logDescription)}>{log.details}</p>
-										<div {...stylex.props(styles.logMeta)}>
-											<span {...stylex.props(styles.logMetaItem)}>
-												<Shield size={12} />
-												By{" "}
-												<Link
-													to="/users/$userId"
-													params={{ userId: log.adminId }}
-													{...stylex.props(styles.adminLink)}
-												>
-													@{log.adminUsername}
-												</Link>
-											</span>
-											<span {...stylex.props(styles.logMetaItem)}>
-												<TargetIcon size={12} />
-												Target:{" "}
-												<Link
-													to={log.targetType === "user" ? "/users/$userId" : "/posts/$postId"}
-													params={
-														log.targetType === "user"
-															? { userId: log.targetId }
-															: { postId: log.targetId }
-													}
-													{...stylex.props(styles.targetLink)}
-												>
-													{log.targetName}
-												</Link>
-											</span>
+										<div {...stylex.props(styles.logCard)}>
+											<div {...stylex.props(styles.logHeader)}>
+												<span {...stylex.props(styles.logAction)}>
+													{getActionLabel(log.action)}
+												</span>
+												<span {...stylex.props(styles.logTime)}>
+													<Calendar size={12} />
+													{log.createdAt}
+												</span>
+											</div>
+											<p {...stylex.props(styles.logDescription)}>
+												{log.details || "No details provided"}
+											</p>
+											<div {...stylex.props(styles.logMeta)}>
+												<span {...stylex.props(styles.logMetaItem)}>
+													<Shield size={12} />
+													By{" "}
+													<Link
+														to="/users/$userId"
+														params={{ userId: log.adminId }}
+														{...stylex.props(styles.adminLink)}
+													>
+														@{log.adminUsername}
+													</Link>
+												</span>
+												<span {...stylex.props(styles.logMetaItem)}>
+													<TargetIcon size={12} />
+													Target: {log.targetType || "unknown"} {log.targetId || ""}
+												</span>
+											</div>
 										</div>
 									</div>
-								</div>
-							);
-						})}
+								);
+							})}
+						</div>
 					</div>
-				</div>
-			))}
+				))
+			)}
 		</main>
 	);
 }

@@ -1,7 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute } from "@tanstack/react-router";
 import { FileText, Flag, MessageSquare, TrendingUp, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import { requireAdminAccess } from "../lib/auth-guard";
+import { getDashboardStats, listAdminAuditLogs } from "../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../tokens.stylex";
 
 const styles = stylex.create({
@@ -174,46 +176,87 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
+	const [statsData, setStatsData] = useState({
+		totalUsers: 0,
+		totalPosts: 0,
+		totalComments: 0,
+		pendingReports: 0,
+		newUsersToday: 0,
+		newPostsToday: 0,
+		bannedUsers: 0,
+	});
+	const [recentActivity, setRecentActivity] = useState<
+		{ text: string; time: string; icon: typeof Users }[]
+	>([]);
+	const [isLoading, setIsLoading] = useState(true);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadDashboard() {
+			try {
+				const [statsResponse, auditResponse] = await Promise.all([
+					getDashboardStats(),
+					listAdminAuditLogs({ data: {} }),
+				]);
+				if (cancelled) return;
+				setStatsData(statsResponse);
+				setRecentActivity(
+					auditResponse.logs.slice(0, 6).map((log) => ({
+						text: `${log.adminUsername} ${log.action.replaceAll("_", " ")}${log.targetType ? ` ${log.targetType}` : ""}`,
+						time: new Date(log.createdAt).toLocaleString(),
+						icon:
+							log.targetType === "user"
+								? Users
+								: log.targetType === "comment"
+									? MessageSquare
+									: FileText,
+					})),
+				);
+			} finally {
+				if (!cancelled) setIsLoading(false);
+			}
+		}
+
+		loadDashboard();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const stats = [
 		{
 			label: "Total Users",
-			value: "7",
-			change: "+3 this week",
+			value: statsData.totalUsers.toString(),
+			change: `${statsData.newUsersToday} new today`,
 			positive: true,
 			icon: Users,
 			color: "blue",
 		},
 		{
 			label: "Total Posts",
-			value: "8",
-			change: "+5 today",
+			value: statsData.totalPosts.toString(),
+			change: `${statsData.newPostsToday} new today`,
 			positive: true,
 			icon: FileText,
 			color: "green",
 		},
 		{
 			label: "Comments",
-			value: "8",
-			change: "+4 today",
+			value: statsData.totalComments.toString(),
+			change: "Total comments",
 			positive: true,
 			icon: MessageSquare,
 			color: "purple",
 		},
 		{
 			label: "Pending Reports",
-			value: "0",
-			change: "All clear",
-			positive: true,
+			value: statsData.pendingReports.toString(),
+			change: `${statsData.bannedUsers} banned users`,
+			positive: statsData.pendingReports === 0,
 			icon: Flag,
 			color: "orange",
 		},
-	];
-
-	const recentActivity = [
-		{ text: "New user @diana joined the platform", time: "Just now", icon: Users },
-		{ text: "@alice posted about full-stack development", time: "5 minutes ago", icon: FileText },
-		{ text: "@bob commented on a post about gRPC", time: "10 minutes ago", icon: MessageSquare },
-		{ text: "New user @charlie registered", time: "1 hour ago", icon: Users },
 	];
 
 	const getIconStyle = (colorName: string) => {
@@ -269,26 +312,32 @@ function DashboardPage() {
 					<h2 {...stylex.props(styles.sectionTitle)}>Recent Activity</h2>
 				</div>
 				<div {...stylex.props(styles.sectionContent)}>
-					<div {...stylex.props(styles.activityList)}>
-						{recentActivity.map((activity, index) => {
-							const Icon = activity.icon;
-							const isLast = index === recentActivity.length - 1;
-							return (
-								<div
-									key={`${activity.text}-${index}`}
-									{...stylex.props(styles.activityItem, isLast && styles.activityItemLast)}
-								>
-									<div {...stylex.props(styles.activityIcon)}>
-										<Icon size={14} />
+					{isLoading ? (
+						<p {...stylex.props(styles.emptyState)}>Loading activity...</p>
+					) : recentActivity.length === 0 ? (
+						<p {...stylex.props(styles.emptyState)}>No admin activity yet.</p>
+					) : (
+						<div {...stylex.props(styles.activityList)}>
+							{recentActivity.map((activity, index) => {
+								const Icon = activity.icon;
+								const isLast = index === recentActivity.length - 1;
+								return (
+									<div
+										key={`${activity.text}-${index}`}
+										{...stylex.props(styles.activityItem, isLast && styles.activityItemLast)}
+									>
+										<div {...stylex.props(styles.activityIcon)}>
+											<Icon size={14} />
+										</div>
+										<div {...stylex.props(styles.activityContent)}>
+											<p {...stylex.props(styles.activityText)}>{activity.text}</p>
+											<span {...stylex.props(styles.activityTime)}>{activity.time}</span>
+										</div>
 									</div>
-									<div {...stylex.props(styles.activityContent)}>
-										<p {...stylex.props(styles.activityText)}>{activity.text}</p>
-										<span {...stylex.props(styles.activityTime)}>{activity.time}</span>
-									</div>
-								</div>
-							);
-						})}
-					</div>
+								);
+							})}
+						</div>
+					)}
 				</div>
 			</section>
 		</main>

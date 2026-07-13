@@ -1,5 +1,4 @@
 import "./env";
-import { createServer } from "node:http";
 import { node } from "@elysiajs/node";
 import { Elysia } from "elysia";
 import { startGrpcServer } from "./grpc/server";
@@ -8,24 +7,34 @@ import { initializeSocketServer } from "./realtime/socket";
 const GRPC_PORT = Number(process.env.GRPC_PORT) || 50051;
 const HTTP_PORT = Number(process.env.HTTP_PORT) || 3001;
 const SOCKET_PORT = Number(process.env.SOCKET_PORT) || 3003;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
+
+function setCorsHeaders(set: { headers: Record<string, string | number> }) {
+	set.headers["Access-Control-Allow-Origin"] = CLIENT_ORIGIN;
+	set.headers["Access-Control-Allow-Credentials"] = "true";
+}
 
 // Start gRPC server first — health check must not report ok until gRPC is ready
 const grpcServer = await startGrpcServer(GRPC_PORT);
 
 // Start Elysia HTTP server for health checks (only after gRPC is bound)
 const app = new Elysia({ adapter: node() })
-	.get("/health", () => ({ status: "ok", grpc: `localhost:${GRPC_PORT}` }))
-	.get("/", () => ({
-		name: "Pulse API",
-		version: "1.0.0",
-		grpcPort: GRPC_PORT,
-		httpPort: HTTP_PORT,
-	}))
+	.get("/health", ({ set }) => {
+		setCorsHeaders(set);
+		return { status: "ok", grpc: `localhost:${GRPC_PORT}` };
+	})
+	.get("/", ({ set }) => {
+		setCorsHeaders(set);
+		return {
+			name: "Pulse API",
+			version: "1.0.0",
+			grpcPort: GRPC_PORT,
+			httpPort: HTTP_PORT,
+		};
+	})
 	.listen(HTTP_PORT);
 
-const socketHttpServer = createServer();
-initializeSocketServer(socketHttpServer);
-socketHttpServer.listen(SOCKET_PORT);
+initializeSocketServer(SOCKET_PORT);
 
 console.log(`🚀 Pulse API started`);
 console.log(`   HTTP server: http://localhost:${HTTP_PORT}`);
@@ -35,16 +44,16 @@ console.log(`   Socket.IO server: ws://localhost:${SOCKET_PORT}`);
 // Graceful shutdown
 process.on("SIGTERM", () => {
 	console.log("Shutting down...");
-	socketHttpServer.close();
+	app.stop();
 	grpcServer.forceShutdown();
 	process.exit(0);
 });
 
 process.on("SIGINT", () => {
 	console.log("Shutting down...");
-	socketHttpServer.close();
+	app.stop();
 	grpcServer.forceShutdown();
 	process.exit(0);
 });
 
-export { app, grpcServer, socketHttpServer };
+export { app, grpcServer };

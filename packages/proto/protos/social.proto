@@ -1,0 +1,142 @@
+syntax = "proto3";
+package chirp.social;
+
+import "common.proto";
+
+service SocialService {
+  rpc SharePost(SharePostRequest) returns (SharePostResponse);
+  rpc Repost(RepostRequest) returns (RepostResponse);
+  rpc GetShareCount(GetShareCountRequest) returns (ShareCountResponse);
+  rpc GetOrCreateConversation(GetOrCreateConversationRequest) returns (ConversationResponse);
+  rpc GetConversations(GetConversationsRequest) returns (ConversationsResponse);
+  rpc SendMessage(SendMessageRequest) returns (MessageResponse);
+  rpc GetMessages(GetMessagesRequest) returns (MessagesResponse);
+  rpc MarkConversationRead(MarkConversationReadRequest) returns (BasicResponse);
+  rpc GetUserBadges(GetUserBadgesRequest) returns (BadgesResponse);
+  rpc RecalculateBadges(RecalculateBadgesRequest) returns (BadgesResponse);
+}
+
+message SharePostRequest {
+  string session_token = 1;
+  string post_id = 2;
+  string destination = 3;
+}
+
+message SharePostResponse {
+  bool success = 1;
+  string share_id = 2;
+  int32 share_count = 3;
+  optional string error = 4;
+}
+
+message RepostRequest {
+  string session_token = 1;
+  string post_id = 2;
+  optional string quote = 3;
+}
+
+message RepostResponse {
+  bool success = 1;
+  string repost_id = 2;
+  int32 share_count = 3;
+  optional string error = 4;
+}
+
+message GetShareCountRequest {
+  string post_id = 1;
+}
+
+message ShareCountResponse {
+  int32 count = 1;
+}
+
+message GetOrCreateConversationRequest {
+  string session_token = 1;
+  string recipient_id = 2;
+}
+
+message GetConversationsRequest {
+  string session_token = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message Conversation {
+  string id = 1;
+  repeated chirp.common.Author participants = 2;
+  int32 unread_count = 3;
+  optional string last_message = 4;
+  chirp.common.Timestamp updated_at = 5;
+}
+
+message ConversationResponse {
+  bool success = 1;
+  optional Conversation conversation = 2;
+  optional string error = 3;
+}
+
+message ConversationsResponse {
+  repeated Conversation conversations = 1;
+}
+
+message SendMessageRequest {
+  string session_token = 1;
+  string conversation_id = 2;
+  string content = 3;
+}
+
+message Message {
+  string id = 1;
+  string conversation_id = 2;
+  chirp.common.Author sender = 3;
+  string content = 4;
+  bool read = 5;
+  chirp.common.Timestamp created_at = 6;
+}
+
+message MessageResponse {
+  bool success = 1;
+  optional Message message = 2;
+  optional string error = 3;
+}
+
+message GetMessagesRequest {
+  string session_token = 1;
+  string conversation_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message MessagesResponse {
+  repeated Message messages = 1;
+}
+
+message MarkConversationReadRequest {
+  string session_token = 1;
+  string conversation_id = 2;
+}
+
+message BasicResponse {
+  bool success = 1;
+  optional string error = 2;
+}
+
+message GetUserBadgesRequest {
+  string user_id = 1;
+}
+
+message RecalculateBadgesRequest {
+  string session_token = 1;
+}
+
+message Badge {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  string description = 4;
+  chirp.common.Timestamp awarded_at = 5;
+}
+
+message BadgesResponse {
+  repeated Badge badges = 1;
+}

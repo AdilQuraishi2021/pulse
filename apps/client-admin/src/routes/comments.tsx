@@ -1,7 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ExternalLink, Eye, Flag, Search, Trash2, User } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAdminAccess } from "../lib/auth-guard";
+import { deleteAdminComment, listAdminComments } from "../server/functions/admin";
 import { colors, radii, semanticColors, spacing } from "../tokens.stylex";
 
 const styles = stylex.create({
@@ -168,6 +170,11 @@ const styles = stylex.create({
 			color: colors.red400,
 		},
 	},
+	emptyState: {
+		textAlign: "center",
+		color: semanticColors.textTertiary,
+		padding: spacing.xl,
+	},
 });
 
 export const Route = createFileRoute("/comments")({
@@ -175,55 +182,60 @@ export const Route = createFileRoute("/comments")({
 	component: CommentsPage,
 });
 
-const mockComments = [
-	{
-		id: "1",
-		author: { id: "2", username: "bob", displayName: "Bob Smith" },
-		content: "Congrats on the deployment! What was the trickiest part of the gRPC setup?",
-		postId: "1",
-		postTitle: "Just deployed my first...",
-		reports: 0,
-		createdAt: "25 minutes ago",
-	},
-	{
-		id: "2",
-		author: { id: "3", username: "charlie", displayName: "Charlie Brown" },
-		content: "The type safety with Protobuf + TypeScript is next level. Welcome to the club!",
-		postId: "1",
-		postTitle: "Just deployed my first...",
-		reports: 0,
-		createdAt: "20 minutes ago",
-	},
-	{
-		id: "3",
-		author: { id: "1", username: "alice", displayName: "Alice Johnson" },
-		content: "Could not agree more. A good codebase is a joy to read.",
-		postId: "2",
-		postTitle: "Morning coffee and code...",
-		reports: 0,
-		createdAt: "45 minutes ago",
-	},
-	{
-		id: "4",
-		author: { id: "4", username: "diana", displayName: "Diana Ross" },
-		content: "Totally agree! We switched to a monorepo last year and never looked back.",
-		postId: "3",
-		postTitle: "Hot take: monorepos are...",
-		reports: 0,
-		createdAt: "1 hour ago",
-	},
-	{
-		id: "5",
-		author: { id: "1", username: "alice", displayName: "Alice Johnson" },
-		content: "Check out Buf for linting and managing your proto files. It is a huge time saver.",
-		postId: "4",
-		postTitle: "Finally wrapped my head...",
-		reports: 0,
-		createdAt: "2 hours ago",
-	},
-];
+interface AdminCommentRow {
+	id: string;
+	author: { id: string; username: string; displayName: string };
+	content: string;
+	postId: string;
+	postTitle: string;
+	likeCount: number;
+	createdAt: string;
+}
 
 function CommentsPage() {
+	const [comments, setComments] = useState<AdminCommentRow[]>([]);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	const loadComments = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			setComments(await listAdminComments());
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load comments");
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		loadComments();
+	}, [loadComments]);
+
+	const visibleComments = useMemo(() => {
+		const query = searchQuery.trim().toLowerCase();
+		if (!query) return comments;
+		return comments.filter(
+			(comment) =>
+				comment.content.toLowerCase().includes(query) ||
+				comment.author.username.toLowerCase().includes(query) ||
+				comment.postTitle.toLowerCase().includes(query),
+		);
+	}, [comments, searchQuery]);
+
+	const handleDelete = async (commentId: string) => {
+		const reason = window.prompt("Reason for deleting this comment?", "Content policy violation");
+		if (!reason) return;
+		try {
+			await deleteAdminComment({ data: { commentId, reason } });
+			await loadComments();
+		} catch (err) {
+			window.alert(err instanceof Error ? err.message : "Failed to delete comment");
+		}
+	};
+
 	return (
 		<main {...stylex.props(styles.container)}>
 			<header {...stylex.props(styles.header)}>
@@ -239,6 +251,8 @@ function CommentsPage() {
 						<input
 							type="text"
 							placeholder="Search comments..."
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
 							{...stylex.props(styles.searchInput)}
 						/>
 					</div>
@@ -257,66 +271,89 @@ function CommentsPage() {
 					</tr>
 				</thead>
 				<tbody>
-					{mockComments.map((comment, index) => {
-						const isLast = index === mockComments.length - 1;
-						return (
-							<tr
-								key={comment.id}
-								{...stylex.props(styles.tableRow, isLast && styles.tableRowLast)}
-							>
-								<td {...stylex.props(styles.td)}>
-									<div {...stylex.props(styles.userCell)}>
-										<div {...stylex.props(styles.avatar)}>
-											<User size={16} />
+					{isLoading ? (
+						<tr>
+							<td colSpan={6} {...stylex.props(styles.emptyState)}>
+								Loading comments...
+							</td>
+						</tr>
+					) : error ? (
+						<tr>
+							<td colSpan={6} {...stylex.props(styles.emptyState)}>
+								{error}
+							</td>
+						</tr>
+					) : visibleComments.length === 0 ? (
+						<tr>
+							<td colSpan={6} {...stylex.props(styles.emptyState)}>
+								No comments found.
+							</td>
+						</tr>
+					) : (
+						visibleComments.map((comment, index) => {
+							const isLast = index === visibleComments.length - 1;
+							return (
+								<tr
+									key={comment.id}
+									{...stylex.props(styles.tableRow, isLast && styles.tableRowLast)}
+								>
+									<td {...stylex.props(styles.td)}>
+										<div {...stylex.props(styles.userCell)}>
+											<div {...stylex.props(styles.avatar)}>
+												<User size={16} />
+											</div>
+											<Link
+												to="/users/$userId"
+												params={{ userId: comment.author.id }}
+												{...stylex.props(styles.userName)}
+											>
+												{comment.author.displayName}
+											</Link>
 										</div>
+									</td>
+									<td {...stylex.props(styles.td)}>
+										<span {...stylex.props(styles.commentContent)}>{comment.content}</span>
+									</td>
+									<td {...stylex.props(styles.td)}>
 										<Link
-											to="/users/$userId"
-											params={{ userId: comment.author.id }}
-											{...stylex.props(styles.userName)}
+											to="/posts/$postId"
+											params={{ postId: comment.postId }}
+											{...stylex.props(styles.postLink)}
 										>
-											{comment.author.displayName}
+											{comment.postTitle}
+											<ExternalLink size={12} />
 										</Link>
-									</div>
-								</td>
-								<td {...stylex.props(styles.td)}>
-									<span {...stylex.props(styles.commentContent)}>{comment.content}</span>
-								</td>
-								<td {...stylex.props(styles.td)}>
-									<Link
-										to="/posts/$postId"
-										params={{ postId: comment.postId }}
-										{...stylex.props(styles.postLink)}
-									>
-										{comment.postTitle}
-										<ExternalLink size={12} />
-									</Link>
-								</td>
-								<td {...stylex.props(styles.td)}>
-									{comment.reports > 0 ? (
+									</td>
+									<td {...stylex.props(styles.td)}>
 										<span {...stylex.props(styles.flagged)}>
-											<Flag size={14} /> {comment.reports}
+											<Flag size={14} /> {comment.likeCount}
 										</span>
-									) : (
-										"-"
-									)}
-								</td>
-								<td {...stylex.props(styles.td)}>{comment.createdAt}</td>
-								<td {...stylex.props(styles.td)}>
-									<div {...stylex.props(styles.actionsCell)}>
-										<button type="button" {...stylex.props(styles.actionButton)}>
-											<Eye size={16} />
-										</button>
-										<button
-											type="button"
-											{...stylex.props(styles.actionButton, styles.deleteButton)}
-										>
-											<Trash2 size={16} />
-										</button>
-									</div>
-								</td>
-							</tr>
-						);
-					})}
+									</td>
+									<td {...stylex.props(styles.td)}>
+										{new Date(comment.createdAt).toLocaleString()}
+									</td>
+									<td {...stylex.props(styles.td)}>
+										<div {...stylex.props(styles.actionsCell)}>
+											<Link
+												to="/posts/$postId"
+												params={{ postId: comment.postId }}
+												{...stylex.props(styles.actionButton)}
+											>
+												<Eye size={16} />
+											</Link>
+											<button
+												type="button"
+												onClick={() => handleDelete(comment.id)}
+												{...stylex.props(styles.actionButton, styles.deleteButton)}
+											>
+												<Trash2 size={16} />
+											</button>
+										</div>
+									</td>
+								</tr>
+							);
+						})
+					)}
 				</tbody>
 			</table>
 		</main>
