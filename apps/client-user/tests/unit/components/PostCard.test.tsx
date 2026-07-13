@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 // Mock the server functions
 vi.mock("../../../src/server/functions/likes", () => ({
 	togglePostLike: vi.fn(),
+	reactToPost: vi.fn(),
+	getPostReactions: vi.fn(() => new Promise(() => {})),
 }));
 
 vi.mock("../../../src/server/functions/posts", () => ({
@@ -13,6 +15,12 @@ vi.mock("../../../src/server/functions/posts", () => ({
 vi.mock("../../../src/server/functions/bookmarks", () => ({
 	toggleBookmark: vi.fn(),
 	getBookmarkStatus: vi.fn().mockResolvedValue({ bookmarked: false }),
+}));
+
+vi.mock("../../../src/server/functions/social", () => ({
+	getShareCount: vi.fn(() => new Promise(() => {})),
+	sharePost: vi.fn(),
+	repost: vi.fn(),
 }));
 
 // Mock TanStack Router Link component

@@ -56,8 +56,6 @@ describe("CommentCard", () => {
 	it("does not show delete button for other users comments", async () => {
 		const { CommentCard } = await import("../../../src/components/comments/CommentCard");
 		render(<CommentCard comment={mockComment} currentUserId="user2" />);
-		const buttons = screen.getAllByRole("button");
-		// Should only have like button
-		expect(buttons.length).toBe(1);
+		expect(screen.queryByTitle("Delete comment")).not.toBeInTheDocument();
 	});
 });
