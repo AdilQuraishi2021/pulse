@@ -302,8 +302,12 @@ export function Header() {
 	}, [user]);
 
 	useEffect(() => {
+		if (location.pathname.startsWith("/auth/")) {
+			return;
+		}
+
 		loadUser();
-	}, [loadUser]);
+	}, [loadUser, location.pathname]);
 
 	useEffect(() => {
 		loadUnreadMessages();
