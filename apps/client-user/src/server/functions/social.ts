@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { fromProtoTimestamp, getGrpcClient, requireGrpcSessionToken } from "../../lib/grpc.server";
+import {
+	fromProtoTimestamp,
+	getGrpcClient,
+	getGrpcSessionToken,
+	requireGrpcSessionToken,
+} from "../../lib/grpc.server";
 
 function toAuthor(author: {
 	id: string;
@@ -13,6 +18,15 @@ function toAuthor(author: {
 		displayName: author.displayName,
 		avatarUrl: author.avatarUrl,
 	};
+}
+
+function isApiUnavailableError(error: unknown) {
+	return (
+		error instanceof Error &&
+		(error.message.includes("ECONNREFUSED") ||
+			error.message.includes("No connection established") ||
+			error.message.includes("Connection dropped"))
+	);
 }
 
 export const getUserBadges = createServerFn()
@@ -130,6 +144,33 @@ export const getConversations = createServerFn()
 			updatedAt: fromProtoTimestamp(conversation.updatedAt),
 		}));
 	});
+
+export const getUnreadMessageCount = createServerFn().handler(async () => {
+	const sessionToken = await getGrpcSessionToken();
+	if (!sessionToken) {
+		return 0;
+	}
+
+	try {
+		const client = getGrpcClient();
+		const { response } = await client.social.getConversations({
+			sessionToken,
+			limit: 100,
+			offset: 0,
+		});
+
+		return response.conversations.reduce(
+			(total, conversation) => total + conversation.unreadCount,
+			0,
+		);
+	} catch (error) {
+		if (isApiUnavailableError(error)) {
+			return 0;
+		}
+
+		throw error;
+	}
+});
 
 export const getMessages = createServerFn()
 	.inputValidator((d: { conversationId: string; limit?: number; offset?: number }) => d)

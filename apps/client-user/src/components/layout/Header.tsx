@@ -12,7 +12,9 @@ import {
 	UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { getCurrentUser, logoutUser } from "../../server/functions/auth";
+import { getUnreadMessageCount } from "../../server/functions/social";
 import { colors, radii, semanticColors, shadows, spacing, zIndex } from "../../tokens.stylex";
 import { NotificationBell } from "../notifications/NotificationBell";
 
@@ -116,6 +118,36 @@ const styles = stylex.create({
 		backgroundColor: semanticColors.bgPrimary,
 		color: semanticColors.primary,
 		boxShadow: shadows.sm,
+	},
+	navIconWrapper: {
+		position: "relative",
+		display: "inline-flex",
+		alignItems: "center",
+		justifyContent: "center",
+		width: "1.25rem",
+		height: "1.25rem",
+		flexShrink: 0,
+	},
+	navBadge: {
+		position: "absolute",
+		top: "-0.55rem",
+		right: "-0.6rem",
+		minWidth: "1rem",
+		height: "1rem",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingLeft: "0.25rem",
+		paddingRight: "0.25rem",
+		borderRadius: radii.full,
+		backgroundColor: colors.red500,
+		color: colors.white,
+		borderWidth: "2px",
+		borderStyle: "solid",
+		borderColor: semanticColors.bgTertiary,
+		fontSize: "0.625rem",
+		fontWeight: 800,
+		lineHeight: 1,
 	},
 	navLinkText: {
 		display: "none",
@@ -241,24 +273,49 @@ export function Header() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [user, setUser] = useState<{ username: string; displayName: string } | null>(null);
+	const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
 	const loadUser = useCallback(async () => {
 		try {
 			const currentUser = await getCurrentUser();
 			setUser(currentUser);
+			if (!currentUser) {
+				setMessageUnreadCount(0);
+			}
 		} catch (error) {
 			console.error("Failed to load user:", error);
 		}
 	}, []);
 
+	const loadUnreadMessages = useCallback(async () => {
+		if (!user) {
+			setMessageUnreadCount(0);
+			return;
+		}
+
+		try {
+			const count = await getUnreadMessageCount();
+			setMessageUnreadCount(count);
+		} catch (error) {
+			console.error("Failed to load unread messages:", error);
+		}
+	}, [user]);
+
 	useEffect(() => {
 		loadUser();
 	}, [loadUser]);
+
+	useEffect(() => {
+		loadUnreadMessages();
+	}, [loadUnreadMessages]);
+
+	useLiveRefresh(loadUnreadMessages, { intervalMs: 5000, enabled: Boolean(user) });
 
 	const handleLogout = async () => {
 		try {
 			await logoutUser();
 			setUser(null);
+			setMessageUnreadCount(0);
 			navigate({ to: "/auth/login" });
 		} catch (error) {
 			console.error("Failed to logout:", error);
@@ -319,7 +376,14 @@ export function Header() {
 							to="/messages"
 							{...stylex.props(styles.navLink, isActive("/messages") && styles.navLinkActive)}
 						>
-							<MessageSquare size={20} />
+							<span {...stylex.props(styles.navIconWrapper)}>
+								<MessageSquare size={20} />
+								{messageUnreadCount > 0 && (
+									<span {...stylex.props(styles.navBadge)}>
+										{messageUnreadCount > 99 ? "99+" : messageUnreadCount}
+									</span>
+								)}
+							</span>
 							<span {...stylex.props(styles.navLinkText)}>Messages</span>
 						</Link>
 					</nav>
