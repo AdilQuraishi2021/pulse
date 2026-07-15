@@ -19,6 +19,12 @@ function getDatabaseConfig(): mysql.PoolOptions {
 		password: process.env.DATABASE_PASSWORD || decodeURIComponent(url.password),
 		database: url.pathname.replace(/^\//, ""),
 		connectionLimit: 10,
+		ssl:
+			process.env.DATABASE_SSL === "true" ||
+			url.searchParams.get("ssl") === "true" ||
+			url.hostname.includes("tidbcloud.com")
+				? { minVersion: "TLSv1.2", rejectUnauthorized: true }
+				: undefined,
 	};
 }
 

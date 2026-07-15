@@ -1,7 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const envFiles = [resolve(process.cwd(), ".env"), resolve(process.cwd(), "apps/api/.env")];
+const repoRootEnv = fileURLToPath(new URL("../../../.env", import.meta.url));
+const apiEnv = fileURLToPath(new URL("../.env", import.meta.url));
+const envFiles = [
+	repoRootEnv,
+	apiEnv,
+	resolve(process.cwd(), ".env"),
+	resolve(process.cwd(), "apps/api/.env"),
+];
 
 for (const file of envFiles) {
 	if (!existsSync(file)) {

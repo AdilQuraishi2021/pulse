@@ -19,5 +19,11 @@ export default defineConfig({
 		user: process.env.DATABASE_USERNAME || decodeURIComponent(url.username) || "root",
 		password: process.env.DATABASE_PASSWORD || decodeURIComponent(url.password),
 		database: url.pathname.replace(/^\//, ""),
+		ssl:
+			process.env.DATABASE_SSL === "true" ||
+			url.searchParams.get("ssl") === "true" ||
+			url.hostname.includes("tidbcloud.com")
+				? "require"
+				: undefined,
 	},
 });
