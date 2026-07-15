@@ -1,3 +1,4 @@
+import type { Server as HttpServer } from "node:http";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 
@@ -90,30 +91,36 @@ function setUserPresence(userId: string, isOnline: boolean) {
 	}
 }
 
-export function initializeSocketServer(port: number) {
+export function initializeSocketServer(port: number, existingHttpServer?: HttpServer) {
 	const origins = allowedClientOrigins();
-	const httpServer = createServer((req, res) => {
-		const headers: Record<string, string> = {};
-		setRealtimeCorsHeaders(req.headers.origin, headers);
+	const httpServer =
+		existingHttpServer ??
+		createServer((req, res) => {
+			const headers: Record<string, string> = {};
+			setRealtimeCorsHeaders(req.headers.origin, headers);
 
-		if (req.method === "OPTIONS") {
-			res.writeHead(204, headers);
+			if (req.method === "OPTIONS") {
+				res.writeHead(204, headers);
+				res.end();
+				return;
+			}
+
+			if (req.url === "/health") {
+				res.writeHead(200, {
+					...headers,
+					"Content-Type": "application/json",
+				});
+				res.end(JSON.stringify({ status: "ok", socket: true }));
+				return;
+			}
+
+			res.writeHead(404, headers);
 			res.end();
-			return;
-		}
+		});
 
-		if (req.url === "/health") {
-			res.writeHead(200, {
-				...headers,
-				"Content-Type": "application/json",
-			});
-			res.end(JSON.stringify({ status: "ok", socket: true }));
-			return;
-		}
-
-		res.writeHead(404, headers);
-		res.end();
-	});
+	if (!existingHttpServer) {
+		httpServer.listen(port);
+	}
 
 	io = new Server(httpServer, {
 		cors: {
@@ -182,7 +189,6 @@ export function initializeSocketServer(port: number) {
 		});
 	});
 
-	httpServer.listen(port);
 	return io;
 }
 

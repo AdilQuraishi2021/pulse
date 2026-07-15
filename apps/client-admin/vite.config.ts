@@ -11,6 +11,7 @@ const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const rootDir = path.resolve(currentDir, "../..");
 
 const config = defineConfig({
+	envDir: rootDir,
 	resolve: {
 		alias: {
 			"@": path.resolve(currentDir, "src"),

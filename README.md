@@ -200,6 +200,7 @@ pnpm run test:e2e         # Run E2E tests only (client apps)
 ### Feature Tables
 - `bookmarks` - Saved posts
 - `notifications` - User notifications
+- `notification_push_tokens` - Firebase Cloud Messaging web push tokens
 - `reports` - Content reports
 - `audit_logs` - Admin action logs
 
@@ -217,9 +218,21 @@ GEMINI_API_KEY=your-google-ai-studio-key
 GEMINI_MODEL=gemini-3.5-flash
 SOCKET_PORT=3003
 VITE_SOCKET_URL=http://localhost:3003
+
+# Firebase Cloud Messaging web push
+VITE_FIREBASE_API_KEY=your-web-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VITE_FIREBASE_APP_ID=your-web-app-id
+VITE_FIREBASE_VAPID_KEY=your-web-push-certificate-key
+FIREBASE_SERVICE_ACCOUNT_JSON='{"project_id":"your-project-id","client_email":"firebase-adminsdk...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"}'
 ```
 
 `GEMINI_API_KEY` is required only for AI writing tools. You can create a free development key in Google AI Studio. `GEMINI_MODEL` is optional and defaults to `gemini-3.5-flash`.
+
+Firebase variables are required only for browser push notifications. See `docs/firebase-push-notifications.md` for the Firebase Console setup and rollout process.
 
 ### Adding a New Feature
 

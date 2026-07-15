@@ -20,6 +20,7 @@ import { GrpcTransport } from "@protobuf-ts/grpc-transport";
 export interface ChirpClientConfig {
 	host: string;
 	secure?: boolean;
+	httpUrl?: string;
 }
 
 export interface ChirpClient {
@@ -44,7 +45,11 @@ export interface ChirpClient {
  * Creates a gRPC client for the Chirp API
  */
 export function createChirpClient(config: ChirpClientConfig): ChirpClient {
-	const { host, secure = false } = config;
+	const { host, secure = false, httpUrl } = config;
+
+	if (httpUrl) {
+		return createHttpChirpClient(httpUrl);
+	}
 
 	const channelCredentials = secure
 		? ChannelCredentials.createSsl()
@@ -71,6 +76,64 @@ export function createChirpClient(config: ChirpClientConfig): ChirpClient {
 		notifications: new NotificationsServiceClient(transport),
 		bookmarks: new BookmarksServiceClient(transport),
 		transport,
+	};
+}
+
+function createHttpChirpClient(httpUrl: string): ChirpClient {
+	const baseUrl = httpUrl.replace(/\/$/, "");
+	const serviceNames = [
+		"admin",
+		"ai",
+		"auth",
+		"bookmarks",
+		"comments",
+		"feed",
+		"follows",
+		"likes",
+		"notifications",
+		"posts",
+		"reports",
+		"search",
+		"social",
+		"users",
+	] as const;
+
+	const createService = (serviceName: (typeof serviceNames)[number]) =>
+		new Proxy(
+			{},
+			{
+				get(_target, property) {
+					if (typeof property !== "string") {
+						return undefined;
+					}
+
+					return async (request: unknown) => {
+						const response = await fetch(`${baseUrl}/rpc/${serviceName}/${property}`, {
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify(request ?? {}),
+						});
+
+						const body = await response.json().catch(() => ({}));
+						if (!response.ok) {
+							throw new Error(body.error || `HTTP RPC failed: ${response.status}`);
+						}
+
+						return body;
+					};
+				},
+			},
+		);
+
+	const client = Object.fromEntries(
+		serviceNames.map((serviceName) => [serviceName, createService(serviceName)]),
+	) as unknown as ChirpClient;
+
+	return {
+		...client,
+		transport: undefined as unknown as GrpcTransport,
 	};
 }
 

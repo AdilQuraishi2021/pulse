@@ -3,6 +3,7 @@ import { getAdminSessionData } from "./session.server";
 
 // gRPC API host
 const GRPC_HOST = process.env.GRPC_API_HOST || "localhost:50051";
+const API_HTTP_URL = process.env.API_HTTP_URL;
 
 // Singleton gRPC client
 let grpcClient: ChirpClient | null = null;
@@ -14,7 +15,8 @@ export function getGrpcClient(): ChirpClient {
 	if (!grpcClient) {
 		grpcClient = createChirpClient({
 			host: GRPC_HOST,
-			secure: process.env.NODE_ENV === "production",
+			secure: process.env.NODE_ENV === "production" && !API_HTTP_URL,
+			httpUrl: API_HTTP_URL,
 		});
 	}
 	return grpcClient;

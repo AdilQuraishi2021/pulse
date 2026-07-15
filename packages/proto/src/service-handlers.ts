@@ -93,11 +93,13 @@ import type {
 	MessagesResponse,
 	PostResponse,
 	PostsResponse,
+	PushTokenResponse,
 	ReactionCountsResponse,
 	ReactionResponse,
 	ReactToCommentRequest,
 	ReactToPostRequest,
 	RecalculateBadgesRequest,
+	RegisterPushTokenRequest,
 	// Auth
 	RegisterRequest,
 	ReportResponse,
@@ -120,6 +122,7 @@ import type {
 	TogglePostLikeRequest,
 	UnbanUserRequest,
 	UnbanUserResponse,
+	UnregisterPushTokenRequest,
 	UpdatePostRequest,
 	UpdatePostResponse,
 	UpdateProfileRequest,
@@ -237,6 +240,8 @@ export interface IAdminService {
 export interface INotificationsService {
 	getNotifications(request: GetNotificationsRequest): Promise<GetNotificationsResponse>;
 	getUnreadCount(request: GetUnreadCountRequest): Promise<GetUnreadCountResponse>;
+	registerPushToken(request: RegisterPushTokenRequest): Promise<PushTokenResponse>;
+	unregisterPushToken(request: UnregisterPushTokenRequest): Promise<PushTokenResponse>;
 	markAsRead(request: MarkAsReadRequest): Promise<MarkAsReadResponse>;
 	markAllAsRead(request: MarkAllAsReadRequest): Promise<MarkAllAsReadResponse>;
 	deleteNotification(request: DeleteNotificationRequest): Promise<DeleteNotificationResponse>;

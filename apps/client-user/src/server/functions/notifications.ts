@@ -59,6 +59,42 @@ export const getUnreadCount = createServerFn().handler(async () => {
 	}
 });
 
+export const registerPushToken = createServerFn({ method: "POST" })
+	.inputValidator((d: string) => d)
+	.handler(async ({ data: pushToken }) => {
+		const sessionToken = await requireGrpcSessionToken();
+		const client = getGrpcClient();
+
+		const { response } = await client.notifications.registerPushToken({
+			sessionToken,
+			pushToken,
+		});
+
+		if (!response.success) {
+			throw new Error(response.error || "Failed to register push token");
+		}
+
+		return { success: true };
+	});
+
+export const unregisterPushToken = createServerFn({ method: "POST" })
+	.inputValidator((d: string) => d)
+	.handler(async ({ data: pushToken }) => {
+		const sessionToken = await requireGrpcSessionToken();
+		const client = getGrpcClient();
+
+		const { response } = await client.notifications.unregisterPushToken({
+			sessionToken,
+			pushToken,
+		});
+
+		if (!response.success) {
+			throw new Error(response.error || "Failed to unregister push token");
+		}
+
+		return { success: true };
+	});
+
 export const markAsRead = createServerFn({ method: "POST" })
 	.inputValidator((d: string) => d)
 	.handler(async ({ data: notificationId }) => {

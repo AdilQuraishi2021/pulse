@@ -6,6 +6,8 @@ import "common.proto";
 service NotificationsService {
   rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
   rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+  rpc RegisterPushToken(RegisterPushTokenRequest) returns (PushTokenResponse);
+  rpc UnregisterPushToken(UnregisterPushTokenRequest) returns (PushTokenResponse);
   rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
   rpc MarkAllAsRead(MarkAllAsReadRequest) returns (MarkAllAsReadResponse);
   rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse);
@@ -39,6 +41,21 @@ message GetUnreadCountRequest {
 
 message GetUnreadCountResponse {
   int32 count = 1;
+}
+
+message RegisterPushTokenRequest {
+  string session_token = 1;
+  string push_token = 2;
+}
+
+message UnregisterPushTokenRequest {
+  string session_token = 1;
+  string push_token = 2;
+}
+
+message PushTokenResponse {
+  bool success = 1;
+  optional string error = 2;
 }
 
 message MarkAsReadRequest {

@@ -6,6 +6,8 @@ import {
 	getUserNotifications,
 	markAllAsRead,
 	markAsRead,
+	registerPushToken,
+	unregisterPushToken,
 } from "../../services/notifications.service";
 import { toProtoTimestamp } from "../../services/utils";
 
@@ -51,6 +53,32 @@ export const notificationsHandler: INotificationsService = {
 			return { count: result.count };
 		} catch {
 			return { count: 0 };
+		}
+	},
+
+	async registerPushToken(request) {
+		try {
+			const auth = validateSessionToken(request.sessionToken);
+			await registerPushToken(auth.userId, request.pushToken);
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : "Failed to register push token",
+			};
+		}
+	},
+
+	async unregisterPushToken(request) {
+		try {
+			const auth = validateSessionToken(request.sessionToken);
+			await unregisterPushToken(auth.userId, request.pushToken);
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : "Failed to unregister push token",
+			};
 		}
 	},
 

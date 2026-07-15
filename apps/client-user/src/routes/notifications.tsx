@@ -1,11 +1,22 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, CheckCheck, Inbox } from "lucide-react";
+import { Bell, BellRing, CheckCheck, Inbox } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NotificationItem } from "../components/notifications/NotificationItem";
 import { broadcastLiveActivity, useLiveRefresh } from "../hooks/useLiveRefresh";
+import {
+	canUseFirebaseMessaging,
+	getPushNotificationToken,
+	hasFirebaseMessagingConfig,
+	removePushNotificationToken,
+} from "../lib/firebaseMessaging";
 import { getCurrentUser } from "../server/functions/auth";
-import { getNotifications, markAllAsRead } from "../server/functions/notifications";
+import {
+	getNotifications,
+	markAllAsRead,
+	registerPushToken,
+	unregisterPushToken,
+} from "../server/functions/notifications";
 import { colors, radii, semanticColors, shadows, spacing } from "../tokens.stylex";
 
 const styles = stylex.create({
@@ -73,6 +84,38 @@ const styles = stylex.create({
 			cursor: "not-allowed",
 		},
 	},
+	pushButton: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		paddingLeft: spacing.md,
+		paddingRight: spacing.md,
+		paddingTop: spacing.sm,
+		paddingBottom: spacing.sm,
+		borderRadius: radii.lg,
+		backgroundColor: semanticColors.surfaceCard,
+		color: semanticColors.textPrimary,
+		fontWeight: 500,
+		fontSize: "0.8125rem",
+		border: `1px solid ${semanticColors.borderDefault}`,
+		cursor: "pointer",
+		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+		":hover": {
+			borderColor: colors.indigo500,
+			color: colors.indigo500,
+		},
+		":disabled": {
+			opacity: 0.5,
+			cursor: "not-allowed",
+		},
+	},
+	headerActions: {
+		display: "flex",
+		alignItems: "center",
+		gap: spacing.sm,
+		flexWrap: "wrap",
+		justifyContent: "flex-end",
+	},
 	card: {
 		backgroundColor: semanticColors.surfaceCard,
 		borderRadius: radii.xl,
@@ -133,6 +176,8 @@ type NotificationPageUser = {
 	id: string;
 };
 
+const storedPushTokenKey = "pulse:web-push-token";
+
 type NotificationListItem = {
 	id: string;
 	type: string;
@@ -155,6 +200,9 @@ function NotificationsPage() {
 	const [user, setUser] = useState<NotificationPageUser | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [markingAll, setMarkingAll] = useState(false);
+	const [pushSupported, setPushSupported] = useState(false);
+	const [pushEnabled, setPushEnabled] = useState(false);
+	const [pushBusy, setPushBusy] = useState(false);
 
 	const loadData = useCallback(async (options: { silent?: boolean } = {}) => {
 		try {
@@ -179,6 +227,28 @@ function NotificationsPage() {
 		loadData();
 	}, [loadData]);
 
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadPushState() {
+			const supported = await canUseFirebaseMessaging();
+			if (cancelled) {
+				return;
+			}
+
+			setPushSupported(supported);
+			setPushEnabled(Boolean(localStorage.getItem(storedPushTokenKey)));
+		}
+
+		if (user) {
+			loadPushState();
+		}
+
+		return () => {
+			cancelled = true;
+		};
+	}, [user]);
+
 	useLiveRefresh(() => loadData({ silent: true }), { intervalMs: 5000, enabled: Boolean(user) });
 
 	const handleMarkAllAsRead = async () => {
@@ -194,6 +264,36 @@ function NotificationsPage() {
 			console.error("Failed to mark all as read:", error);
 		} finally {
 			setMarkingAll(false);
+		}
+	};
+
+	const handleTogglePushNotifications = async () => {
+		if (pushBusy) return;
+
+		setPushBusy(true);
+		try {
+			const existingToken = localStorage.getItem(storedPushTokenKey);
+			if (existingToken) {
+				await unregisterPushToken({ data: existingToken });
+				await removePushNotificationToken();
+				localStorage.removeItem(storedPushTokenKey);
+				setPushEnabled(false);
+				return;
+			}
+
+			const pushToken = await getPushNotificationToken();
+			if (!pushToken) {
+				setPushEnabled(false);
+				return;
+			}
+
+			await registerPushToken({ data: pushToken });
+			localStorage.setItem(storedPushTokenKey, pushToken);
+			setPushEnabled(true);
+		} catch (error) {
+			console.error("Failed to update push notification settings:", error);
+		} finally {
+			setPushBusy(false);
 		}
 	};
 
@@ -238,17 +338,31 @@ function NotificationsPage() {
 					</div>
 				</div>
 
-				{hasUnread && (
-					<button
-						type="button"
-						onClick={handleMarkAllAsRead}
-						disabled={markingAll}
-						{...stylex.props(styles.markAllButton)}
-					>
-						<CheckCheck size={16} />
-						Mark all read
-					</button>
-				)}
+				<div {...stylex.props(styles.headerActions)}>
+					{hasFirebaseMessagingConfig() && pushSupported && (
+						<button
+							type="button"
+							onClick={handleTogglePushNotifications}
+							disabled={pushBusy}
+							{...stylex.props(styles.pushButton)}
+						>
+							<BellRing size={16} />
+							{pushEnabled ? "Disable push" : "Enable push"}
+						</button>
+					)}
+
+					{hasUnread && (
+						<button
+							type="button"
+							onClick={handleMarkAllAsRead}
+							disabled={markingAll}
+							{...stylex.props(styles.markAllButton)}
+						>
+							<CheckCheck size={16} />
+							Mark all read
+						</button>
+					)}
+				</div>
 			</div>
 
 			<div {...stylex.props(styles.card)}>

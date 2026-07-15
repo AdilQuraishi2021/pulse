@@ -183,6 +183,26 @@ export const notifications = mysqlTable("notifications", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const notificationPushTokens = mysqlTable(
+	"notification_push_tokens",
+	{
+		id: id("id").primaryKey(),
+		userId: id("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		token: varchar("token", { length: 512 }).notNull(),
+		platform: mysqlEnum("platform", ["web"]).notNull().default("web"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at")
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => new Date()),
+	},
+	(table) => ({
+		uniquePushToken: unique().on(table.userId, table.token),
+	}),
+);
+
 // Reports table for content moderation
 export const reports = mysqlTable("reports", {
 	id: id("id").primaryKey(),
@@ -302,6 +322,8 @@ export type Repost = typeof reposts.$inferSelect;
 export type InsertRepost = typeof reposts.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+export type NotificationPushToken = typeof notificationPushTokens.$inferSelect;
+export type InsertNotificationPushToken = typeof notificationPushTokens.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = typeof reports.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
