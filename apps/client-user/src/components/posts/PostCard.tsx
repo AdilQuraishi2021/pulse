@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 import {
+	BadgeCheck,
 	Edit,
 	HandHeart,
 	Heart,
@@ -89,6 +90,9 @@ const styles = stylex.create({
 		minHeight: "1.5rem",
 	},
 	displayName: {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: "0.25rem",
 		fontWeight: fontWeight.bold,
 		color: semanticColors.textPrimary,
 		textDecoration: "none",
@@ -96,6 +100,10 @@ const styles = stylex.create({
 		":hover": {
 			color: colors.blue600,
 		},
+	},
+	verifiedIcon: {
+		color: colors.blue500,
+		flexShrink: 0,
 	},
 	username: {
 		color: semanticColors.textTertiary,
@@ -142,6 +150,7 @@ const styles = stylex.create({
 		paddingTop: spacing.sm,
 		borderTop: `1px solid ${semanticColors.borderSubtle}`,
 		flexWrap: "wrap",
+		justifyContent: "space-between",
 	},
 	reactionGroup: {
 		display: "flex",
@@ -493,6 +502,11 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 							{...stylex.props(styles.displayName)}
 						>
 							{post.author.displayName}
+							<BadgeCheck
+								size={14}
+								{...stylex.props(styles.verifiedIcon)}
+								aria-label="Verified account"
+							/>
 						</Link>
 						<Link
 							to="/users/$username"
@@ -501,7 +515,7 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
 						>
 							@{post.author.username}
 						</Link>
-						<span {...stylex.props(styles.separator)}>·</span>
+						<span {...stylex.props(styles.separator)}>-</span>
 						<RelativeTime date={post.createdAt} />
 						{post.updatedAt.getTime() !== post.createdAt.getTime() && (
 							<span {...stylex.props(styles.editedBadge)}>edited</span>

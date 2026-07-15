@@ -1,6 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, ArrowRight, Lock, Mail, MessageCircle } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowRight,
+	BadgeCheck,
+	Lock,
+	Mail,
+	MessageCircle,
+	ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { loginUser } from "../../server/functions/auth";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
@@ -68,6 +76,25 @@ const styles = stylex.create({
 		maxWidth: "24rem",
 		lineHeight: "1.6",
 	},
+	trustList: {
+		display: "flex",
+		justifyContent: "center",
+		gap: spacing.md,
+		marginTop: spacing["2xl"],
+		flexWrap: "wrap",
+	},
+	trustPill: {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: spacing.xs,
+		padding: "0.375rem 0.625rem",
+		borderRadius: radii.full,
+		backgroundColor: "rgba(255, 255, 255, 0.14)",
+		border: "1px solid rgba(255, 255, 255, 0.2)",
+		color: colors.white,
+		fontSize: fontSize.xs,
+		fontWeight: fontWeight.semibold,
+	},
 	formSide: {
 		flex: 1,
 		display: "flex",
@@ -100,8 +127,9 @@ const styles = stylex.create({
 	},
 	card: {
 		backgroundColor: semanticColors.surfaceCard,
-		borderRadius: "1.25rem",
-		boxShadow: "0 4px 24px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03)",
+		borderRadius: radii.xl,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: "0 16px 40px -28px rgba(15, 23, 42, 0.45)",
 		padding: spacing["3xl"],
 	},
 	heading: {
@@ -230,6 +258,15 @@ const styles = stylex.create({
 		marginTop: spacing["2xl"],
 		textAlign: "center",
 	},
+	securityNote: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: spacing.xs,
+		marginTop: spacing.lg,
+		color: semanticColors.textTertiary,
+		fontSize: fontSize.xs,
+	},
 	footerText: {
 		color: semanticColors.textSecondary,
 		fontSize: fontSize.sm,
@@ -290,6 +327,16 @@ function LoginPage() {
 					<p {...stylex.props(styles.brandingSubtitle)}>
 						Connect with friends and share what's happening in your world.
 					</p>
+					<div {...stylex.props(styles.trustList)}>
+						<span {...stylex.props(styles.trustPill)}>
+							<BadgeCheck size={14} />
+							Verified profiles
+						</span>
+						<span {...stylex.props(styles.trustPill)}>
+							<ShieldCheck size={14} />
+							Secure sign in
+						</span>
+					</div>
 				</div>
 			</div>
 
@@ -353,7 +400,7 @@ function LoginPage() {
 											autoComplete="current-password"
 											required
 											{...stylex.props(styles.input)}
-											placeholder="••••••••"
+											placeholder="Enter your password"
 											value={password}
 											onChange={(e) => setPassword(e.target.value)}
 										/>
@@ -384,6 +431,10 @@ function LoginPage() {
 									<ArrowRight size={16} />
 								</Link>
 							</p>
+							<div {...stylex.props(styles.securityNote)}>
+								<ShieldCheck size={14} />
+								Protected by role-based session controls
+							</div>
 						</div>
 					</div>
 				</div>

@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
+	BadgeCheck,
 	Bookmark,
 	Compass,
 	Home,
@@ -72,14 +73,28 @@ const styles = stylex.create({
 	logoText: {
 		fontSize: "1.25rem",
 		fontWeight: 800,
-		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.cyan500})`,
-		backgroundClip: "text",
-		WebkitBackgroundClip: "text",
-		color: "transparent",
+		color: semanticColors.textPrimary,
 		letterSpacing: "0",
 		display: "none",
 		"@media (min-width: 640px)": {
 			display: "block",
+		},
+	},
+	trustBadge: {
+		display: "none",
+		alignItems: "center",
+		gap: "0.25rem",
+		paddingLeft: spacing.sm,
+		paddingRight: spacing.sm,
+		paddingTop: "0.25rem",
+		paddingBottom: "0.25rem",
+		borderRadius: radii.full,
+		backgroundColor: semanticColors.primaryLight,
+		color: semanticColors.primary,
+		fontSize: "0.75rem",
+		fontWeight: 700,
+		"@media (min-width: 900px)": {
+			display: "inline-flex",
 		},
 	},
 	nav: {
@@ -343,6 +358,10 @@ export function Header() {
 							<MessageCircle {...stylex.props(styles.iconWhite)} size={20} />
 						</div>
 						<span {...stylex.props(styles.logoText)}>Pulse</span>
+						<span {...stylex.props(styles.trustBadge)}>
+							<BadgeCheck size={14} />
+							Verified network
+						</span>
 					</Link>
 
 					{/* Navigation */}

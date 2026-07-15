@@ -8,6 +8,7 @@ import {
 	LogOut,
 	MessageSquare,
 	Shield,
+	ShieldCheck,
 	Users,
 } from "lucide-react";
 import { useAdminUser } from "../../routes/__root";
@@ -22,6 +23,7 @@ const styles = stylex.create({
 		position: "sticky",
 		top: 0,
 		zIndex: 50,
+		boxShadow: "0 10px 30px -26px rgba(15, 23, 42, 0.55)",
 	},
 	container: {
 		maxWidth: "1400px",
@@ -42,22 +44,25 @@ const styles = stylex.create({
 		alignItems: "center",
 		gap: spacing.sm,
 		textDecoration: "none",
-		color: colors.white,
+		color: semanticColors.textPrimary,
 		fontWeight: 800,
 		fontSize: "1.125rem",
-		letterSpacing: "-0.025em",
+		letterSpacing: "0",
 	},
 	logoIcon: {
-		color: colors.indigo400,
+		color: semanticColors.primary,
 	},
 	badge: {
-		backgroundImage: `linear-gradient(135deg, ${colors.indigo500}, ${colors.blue600})`,
-		color: colors.white,
+		display: "inline-flex",
+		alignItems: "center",
+		gap: "0.25rem",
+		backgroundColor: semanticColors.primaryLight,
+		color: semanticColors.primary,
 		fontSize: "0.5625rem",
 		fontWeight: 700,
 		paddingInline: spacing.sm,
-		paddingBlock: "2px",
-		borderRadius: radii.sm,
+		paddingBlock: "0.25rem",
+		borderRadius: radii.full,
 		textTransform: "uppercase",
 		letterSpacing: "0.08em",
 	},
@@ -86,7 +91,7 @@ const styles = stylex.create({
 	},
 	navLinkActive: {
 		backgroundColor: semanticColors.primaryLight,
-		color: colors.indigo400,
+		color: semanticColors.primary,
 	},
 	actions: {
 		display: "flex",
@@ -164,7 +169,10 @@ export function AdminHeader() {
 						<Shield size={24} {...stylex.props(styles.logoIcon)} />
 						Pulse
 					</Link>
-					<span {...stylex.props(styles.badge)}>Admin</span>
+					<span {...stylex.props(styles.badge)}>
+						<ShieldCheck size={12} />
+						Admin verified
+					</span>
 				</div>
 
 				<nav {...stylex.props(styles.nav)}>

@@ -1,6 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, ArrowRight, AtSign, Lock, Mail, MessageCircle, User } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowRight,
+	AtSign,
+	BadgeCheck,
+	Lock,
+	Mail,
+	MessageCircle,
+	ShieldCheck,
+	User,
+} from "lucide-react";
 import { useState } from "react";
 import { registerUser } from "../../server/functions/auth";
 import { colors, fontSize, fontWeight, radii, semanticColors, spacing } from "../../tokens.stylex";
@@ -68,6 +78,25 @@ const styles = stylex.create({
 		maxWidth: "24rem",
 		lineHeight: "1.6",
 	},
+	trustList: {
+		display: "flex",
+		justifyContent: "center",
+		gap: spacing.md,
+		marginTop: spacing["2xl"],
+		flexWrap: "wrap",
+	},
+	trustPill: {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: spacing.xs,
+		padding: "0.375rem 0.625rem",
+		borderRadius: radii.full,
+		backgroundColor: "rgba(255, 255, 255, 0.14)",
+		border: "1px solid rgba(255, 255, 255, 0.2)",
+		color: colors.white,
+		fontSize: fontSize.xs,
+		fontWeight: fontWeight.semibold,
+	},
 	formSide: {
 		flex: 1,
 		display: "flex",
@@ -100,8 +129,9 @@ const styles = stylex.create({
 	},
 	card: {
 		backgroundColor: semanticColors.surfaceCard,
-		borderRadius: "1.25rem",
-		boxShadow: "0 4px 24px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03)",
+		borderRadius: radii.xl,
+		border: `1px solid ${semanticColors.borderSubtle}`,
+		boxShadow: "0 16px 40px -28px rgba(15, 23, 42, 0.45)",
 		padding: spacing["3xl"],
 	},
 	heading: {
@@ -180,8 +210,11 @@ const styles = stylex.create({
 	},
 	gridRow: {
 		display: "grid",
-		gridTemplateColumns: "1fr 1fr",
+		gridTemplateColumns: "1fr",
 		gap: spacing.lg,
+		"@media (min-width: 640px)": {
+			gridTemplateColumns: "1fr 1fr",
+		},
 	},
 	submitButton: {
 		width: "100%",
@@ -230,6 +263,15 @@ const styles = stylex.create({
 	footer: {
 		marginTop: spacing["2xl"],
 		textAlign: "center",
+	},
+	securityNote: {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: spacing.xs,
+		marginTop: spacing.lg,
+		color: semanticColors.textTertiary,
+		fontSize: fontSize.xs,
 	},
 	footerText: {
 		color: semanticColors.textSecondary,
@@ -314,6 +356,16 @@ function RegisterPage() {
 					<p {...stylex.props(styles.brandingSubtitle)}>
 						Start sharing your thoughts and connect with amazing people today.
 					</p>
+					<div {...stylex.props(styles.trustList)}>
+						<span {...stylex.props(styles.trustPill)}>
+							<BadgeCheck size={14} />
+							Verified identity cues
+						</span>
+						<span {...stylex.props(styles.trustPill)}>
+							<ShieldCheck size={14} />
+							Protected accounts
+						</span>
+					</div>
 				</div>
 			</div>
 
@@ -418,7 +470,7 @@ function RegisterPage() {
 										type="password"
 										required
 										{...stylex.props(styles.input)}
-										placeholder="••••••••"
+										placeholder="Create a password"
 										value={formData.password}
 										onChange={(e) => setFormData({ ...formData, password: e.target.value })}
 									/>
@@ -439,7 +491,7 @@ function RegisterPage() {
 										type="password"
 										required
 										{...stylex.props(styles.input)}
-										placeholder="••••••••"
+										placeholder="Confirm your password"
 										value={formData.confirmPassword}
 										onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
 									/>
@@ -469,6 +521,10 @@ function RegisterPage() {
 									<ArrowRight size={16} />
 								</Link>
 							</p>
+							<div {...stylex.props(styles.securityNote)}>
+								<ShieldCheck size={14} />
+								Community accounts are checked for platform integrity
+							</div>
 						</div>
 					</div>
 				</div>
